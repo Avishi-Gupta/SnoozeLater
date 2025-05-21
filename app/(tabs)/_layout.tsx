@@ -34,10 +34,17 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="Daily Planner"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: 'Planner',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
+        }}
+      />
+            <Tabs.Screen
+        name="SleepTimer"
+        options={{
+          title: 'Sleep Timer',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="moon.fill" color={color} />,
         }}
       />
     </Tabs>
