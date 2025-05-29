@@ -34,7 +34,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="Daily Planner"
+        name="DailyPlanner"
         options={{
           title: 'Planner',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="book.fill" color={color} />,
@@ -45,13 +45,6 @@ export default function TabLayout() {
         options={{
           title: 'Sleep Timer',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="moon.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="Login"
-        options={{
-          title: 'Login',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tabs>

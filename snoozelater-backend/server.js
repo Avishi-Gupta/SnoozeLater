@@ -63,6 +63,16 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.get('/test-db', async (req, res) => {
+  try {
+    const users = await pool.query('SELECT * FROM users');
+    res.json(users.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Database error');
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
