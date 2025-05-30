@@ -100,7 +100,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 60, alignItems: 'center', backgroundColor: '#816ec7' },
-  title: { fontSize: 20, marginBottom: 20 },
+  title: { fontSize: 20, marginBottom: 20, color: 'white' },
     button: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 14,

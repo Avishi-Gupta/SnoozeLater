@@ -11,7 +11,7 @@ export default function Register() {
 
   const handleRegister = async () => {
     try {
-      await axios.post('http://192.168.1.196:3000/register', { email, password });
+      await axios.post('http://192.168.29.93:3000/register', { email, password });
         if (!email.trim() || !password.trim()) {
     setMessage('Please enter both email and password');
     return;
@@ -49,7 +49,7 @@ export default function Register() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#816ec7' },
-  input: { borderWidth: 1, marginBottom: 15, padding: 10, borderRadius: 5, borderColor: 'white' },
+  input: { borderWidth: 1, marginBottom: 15, padding: 10, borderRadius: 5, borderColor: 'white', color: 'white' },
     button: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 14,

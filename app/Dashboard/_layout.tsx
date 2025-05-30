@@ -43,7 +43,7 @@ export default function TabLayout() {
             <Tabs.Screen
         name="SleepTimer"
         options={{
-          title: 'Sleep Timer',
+          title: 'Sleep Tracker',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="moon.fill" color={color} />,
         }}
       />
