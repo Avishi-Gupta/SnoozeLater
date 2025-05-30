@@ -9,6 +9,6 @@ export default function Leaderboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: '60', alignItems: 'center', backgroundColor: '#816ec7' },
+  container: { flex: 1, padding: 60, alignItems: 'center', backgroundColor: '#816ec7' },
   title: { fontSize: 24, marginBottom: 20 },
 });

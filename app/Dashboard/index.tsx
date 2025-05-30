@@ -88,7 +88,9 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+
       <Text style={styles.title}>Welcome to the Home Screen!</Text>
+      
       <TouchableOpacity style={styles.button} onPress={handleLogout}>
               <Text style={styles.buttonText}>Logout</Text>
             </TouchableOpacity>
@@ -97,7 +99,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: '60', alignItems: 'center', backgroundColor: '#816ec7' },
+  container: { flex: 1, padding: 60, alignItems: 'center', backgroundColor: '#816ec7' },
   title: { fontSize: 20, marginBottom: 20 },
     button: {
     backgroundColor: '#4e6ab0',

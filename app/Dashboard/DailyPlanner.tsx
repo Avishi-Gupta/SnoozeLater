@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   container2: {
     flex: 1,                     // fills the screen
-    padding: '30',    // vertical center
+    padding: 30,    // vertical center
     alignItems: 'center',        // horizontal center
     backgroundColor: '#816EC7',
   },
