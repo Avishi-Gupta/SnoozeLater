@@ -26,7 +26,7 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
-      <Tabs.Screen
+      <Tabs.Screen 
         name="index"
         options={{
           title: 'Home',
@@ -45,6 +45,20 @@ export default function TabLayout() {
         options={{
           title: 'Sleep Timer',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="moon.fill" color={color} />,
+        }}
+      />
+            <Tabs.Screen
+        name="LeaderBoard"
+        options={{
+          title: 'Leaderboard',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="medal.fill" color={color} />,
+        }}
+      />
+            <Tabs.Screen
+        name="WeeklyInsights"
+        options={{
+          title: 'Insights',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
         }}
       />
     </Tabs>

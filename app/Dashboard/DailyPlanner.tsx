@@ -109,27 +109,64 @@
 //   },
 // });
 
-import { StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function PlannerScreen() {
+    const router = useRouter();
+    const [routine, setRoutine] = useState('');
+
+  const handleFocusTimerPress = () => {
+    router.push('../FocusTimer'); // This assumes you have a FocusTimer.tsx file under /app
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={styles.container2}>
       <Text style={styles.title}>Plan your day here!</Text>
+      <TextInput placeholder="What do you want to do?" value={routine} onChangeText={setRoutine} style={styles.input} placeholderTextColor="#FFFFFF" />
+
+      <TouchableOpacity style={styles.button} onPress={handleFocusTimerPress}>
+        <Text style={styles.buttonText}>Start Focus Timer</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,                     // fills the screen
-    justifyContent: 'flex-start',    // vertical center
-    alignItems: 'flex-start',        // horizontal center
-    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',    // vertical center
+    alignItems: 'center',        // horizontal center
+    backgroundColor: '#2E177C',
+  },
+  container2: {
+    flex: 1,                     // fills the screen
+    padding: '30',    // vertical center
+    alignItems: 'center',        // horizontal center
+    backgroundColor: '#816EC7',
   },
   title: {
     fontSize: 24,
     margin: 60,
-    color: '#333',
+    color: '#FFFFFF',
   },
+  button: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '600',
+  },
+  input: { color: 'white', borderWidth: 1, marginBottom: 15, padding: 10, borderRadius: 5, borderColor: 'white'},
 });

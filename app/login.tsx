@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function Login() {
   const router = useRouter();
@@ -13,10 +13,13 @@ export default function Login() {
   const handleLogin = async () => {
     try {
       const response = await axios.post('http://192.168.1.196:3000/login', { email, password });
+      if (!email.trim() || !password.trim()) {
+    setMessage('Please enter both email and password');
+    return;
+  }
       setMessage('Login successful!');
       await AsyncStorage.setItem('token', response.data.token);
-      console.log('Login successful, navigating to (tabs)');
-      router.replace('./(tabs)'); // go to your main tabs screen after login
+      router.replace('./Dashboard'); // go to your main tabs screen after login
     } catch (err: unknown) {
   if (
     typeof err === 'object' &&
@@ -35,18 +38,35 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} />
-      <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} />
-      <Button title="Login" onPress={handleLogin} />
+      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} placeholderTextColor="#FFFFFF"/>
+      <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} placeholderTextColor="#FFFFFF"/>
+      <TouchableOpacity style={styles.button} onPress={handleLogin}>
+              <Text style={styles.buttonText}>Login</Text>
+            </TouchableOpacity>
       {message ? <Text>{message}</Text> : null}
-      <Text onPress={() => router.push('/register')} style={{ marginTop: 20, color: 'blue' }}>
-        Don't have an account? Sign up
-      </Text>
+      <Button title="Don't have an account? Sign up" onPress={() => router.push('/register')} color='#ffffff'/>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, justifyContent: 'center' },
-  input: { borderWidth: 1, marginBottom: 15, padding: 10, borderRadius: 5 },
+  container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#816ec7' },
+  input: { borderWidth: 1, marginBottom: 15, padding: 10, borderRadius: 5, borderColor: 'white' },
+    button: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '600',
+  }
 });

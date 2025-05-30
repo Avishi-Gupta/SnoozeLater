@@ -51,24 +51,16 @@ export default function RootLayout() {
     </View>
   );
   }
-  // const [loaded] = useFonts({
-  //   SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
-  // });
-
-  // if (!loaded) {
-  //   // Async font loading only occurs in development.
-  //   return null;
-  // }
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack initialRouteName= "login">s
+          <Stack screenOptions={{ headerShown: false }} initialRouteName= "login" >
       {isLoggedIn ? (
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       ) : (
         <Stack.Screen name="login" options={{ headerShown: false }} />
       )}
-      <Stack.Screen name="register" />
+      <Stack.Screen name="register" options={{ headerShown: false }} />
     </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
