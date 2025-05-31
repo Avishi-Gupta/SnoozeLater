@@ -1,7 +1,7 @@
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { registerUser } from '../lib/api';
 
 export default function Register() {
   const router = useRouter();
@@ -9,30 +9,24 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-  const handleRegister = async () => {
-    try {
-      await axios.post('http://192.168.29.93:3000/register', { email, password });
-        if (!email.trim() || !password.trim()) {
+const handleRegister = async () => {
+  if (!email || !password) {
     setMessage('Please enter both email and password');
     return;
   }
-      setMessage('Registered successfully!');
-      router.replace('/login'); // back to login after registering
-    } catch (err: unknown) {
-    if (
-      typeof err === 'object' &&
-      err !== null &&
-      'response' in err &&
-      (err as any).response?.data?.error
-    ) {
-      setMessage('Registration failed: ' + (err as any).response.data.error);
-    } else if (err instanceof Error) {
-      setMessage('Registration failed: ' + err.message);
+
+  try {
+    await registerUser(email, password);
+    setMessage('Registered successfully!');
+    router.replace('/login');
+  } catch (error) {
+    if (error instanceof Error) {
+      setMessage('Registration failed: ' + error.message);
     } else {
       setMessage('Registration failed: Unknown error');
     }
-    }
-  };
+  }
+};
 
   return (
     <View style={styles.container}>

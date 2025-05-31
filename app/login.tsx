@@ -1,8 +1,7 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { loginUser } from '../lib/api';
 
 export default function Login() {
   const router = useRouter();
@@ -11,30 +10,24 @@ export default function Login() {
   const [message, setMessage] = useState('');
 
   const handleLogin = async () => {
+    if (!email || !password) {
+      setMessage('Please enter both email and password');
+      return;
+    }
+
     try {
-      const response = await axios.post('http://192.168.29.93:3000/login', { email, password });
-      if (!email.trim() || !password.trim()) {
-    setMessage('Please enter both email and password');
-    return;
-  }
+      await loginUser(email, password);
       setMessage('Login successful!');
-      await AsyncStorage.setItem('token', response.data.token);
-      router.replace('./Dashboard'); // go to your main tabs screen after login
-    } catch (err: unknown) {
-  if (
-    typeof err === 'object' &&
-    err !== null &&
-    'response' in err &&
-    (err as any).response?.data?.error
-  ) {
-    setMessage('Login failed: ' + (err as any).response.data.error);
-  } else if (err instanceof Error) {
-    setMessage('Login failed: ' + err.message);
+      router.replace('/Dashboard');
+    } catch (error) {
+        if (error instanceof Error) {
+    setMessage(error.message);
   } else {
-    setMessage('Login failed: Unknown error');
+    setMessage('An unexpected error occurred');
   }
     }
   };
+
 
   return (
     <View style={styles.container}>
