@@ -42,11 +42,15 @@ export default function SleepTimer() {
   );
 }
 
-function formatTime(totalSeconds: number) {
-  const minutes = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
-  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
-  return `${minutes}:${seconds}`;
-}
+function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const Mins = minutes < 10 ? '0' + minutes : minutes;
+    const Secs = secs < 10 ? '0' + secs : secs;
+    return Mins + ':' + Secs;
+  }
+
+
 
 const styles = StyleSheet.create({
   container: {
