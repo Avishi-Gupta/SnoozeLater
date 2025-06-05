@@ -1,7 +1,21 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { loginUser } from '../lib/api';
+//import { loginUser } from '../lib/api';
+import { supabase } from '../lib/supabase';
+
+export const loginUser = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
 
 export default function Login() {
   const router = useRouter();

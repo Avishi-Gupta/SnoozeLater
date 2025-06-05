@@ -12,21 +12,36 @@ export default function PlannerScreen() {
     router.push('../FocusTimer'); 
   };
 
-    const handleAddTask = () => {
-    if (!routine.trim() || !time.trim()) return;
-    const newTask = {
-      id: Date.now().toString(),
-      routine,
-      time,
-    };
-    setTasks((prev) => [...prev, newTask]);
-    setRoutine('');
-    setTime('');
+function handleAddTask() {
+  if (routine.trim() === '' || time.trim() === '') {
+    return; 
+  }
+
+  const newTask = {
+    id: String(Date.now()), 
+    routine: routine,
+    time: time,
   };
 
-  const handleDeleteTask = (id: string) => {
-  setTasks((prevTasks) => prevTasks.filter((task) => task.id !== id));
-};
+
+  const updatedTasks = tasks.concat(newTask);
+  setTasks(updatedTasks);
+
+  setRoutine('');
+  setTime('');
+}
+
+function handleDeleteTask(id: string) {
+  const updatedTasks = [];
+
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].id !== id) {
+      updatedTasks.push(tasks[i]);
+    }
+  }
+
+  setTasks(updatedTasks);
+}
 
   return (
     <View style={styles.container2}>

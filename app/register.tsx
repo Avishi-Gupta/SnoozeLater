@@ -1,7 +1,21 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { registerUser } from '../lib/api';
+// import { registerUser } from '../lib/api';
+import { supabase } from '../lib/supabase';
+
+export const registerUser = async (email: string, password: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
 
 export default function Register() {
   const router = useRouter();
@@ -9,24 +23,39 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-const handleRegister = async () => {
-  if (!email || !password) {
-    setMessage('Please enter both email and password');
-    return;
-  }
-
-  try {
-    await registerUser(email, password);
-    setMessage('Registered successfully!');
-    router.replace('/login');
-  } catch (error) {
-    if (error instanceof Error) {
-      setMessage('Registration failed: ' + error.message);
-    } else {
-      setMessage('Registration failed: Unknown error');
+    const handleRegister = async () => {
+    try {
+      await registerUser(email, password);
+      setMessage('Registration successful!');
+      router.replace('/login');
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage('Unexpected error occurred');
+      }
     }
-  }
-};
+  };
+
+// const handleRegister = async () => {
+//   if (!email || !password) {
+//     setMessage('Please enter both email and password');
+//     return;
+//   }
+
+//   try {
+//     await registerUser(email, password);
+//     setMessage('Registered successfully!');
+//     router.replace('/login');
+//   } catch (error) {
+//     if (error instanceof Error) {
+//       setMessage('Registration failed: ' + error.message);
+//     } else {
+//       setMessage('Registration failed: Unknown error');
+//     }
+//   }
+// };
+
 
   return (
     <View style={styles.container}>
