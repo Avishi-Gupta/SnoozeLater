@@ -76,10 +76,24 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const [user, setUser] = useState<{ username: string; email: string} | null > (null)
+
+  useEffect(() => {
+    const loadUserInfo = async () => {
+      const userInfoString = await AsyncStorage.getItem('userInfo');
+      if (userInfoString) {
+        const userInfo = JSON.parse(userInfoString)
+        setUser(userInfo);
+      }
+    };
+
+    loadUserInfo();
+  }, []);
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem('token');
@@ -88,8 +102,15 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
+      {user ? (
+        <>
+         <Text style={styles.title}>Welcome, {user.username}!</Text>
+         <Text style={styles.subtitle}>Email: {user.email}</Text>
+        </>
+      ) : (
+        <Text style={styles.title}>Loading...</Text>
+      )}
 
-      <Text style={styles.title}>Welcome to the Home Screen!</Text>
       
       <TouchableOpacity style={styles.button} onPress={handleLogout}>
               <Text style={styles.buttonText}>Logout</Text>
@@ -100,7 +121,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 60, alignItems: 'center', backgroundColor: '#816ec7' },
-  title: { fontSize: 20, marginBottom: 20, color: 'white' },
+  title: { fontSize: 20, marginBottom: 20, color: 'white', fontWeight: '600' },
+  subtitle: {fontSize: 16, marginBottom: 20, color: 'white'},
     button: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 14,
