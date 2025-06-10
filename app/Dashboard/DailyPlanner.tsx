@@ -125,10 +125,10 @@ export default function PlannerScreen() {
       <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
         <Text style={styles.buttonText}>Add Task</Text>
       </TouchableOpacity>
-
+{/* 
       <TouchableOpacity style={styles.button} onPress={handleFocusTimerPress}>
         <Text style={styles.buttonText}>Start Focus Timer</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       <FlatList
         data={tasks}
@@ -138,6 +138,23 @@ export default function PlannerScreen() {
             <Text style={styles.taskText}>
               {formatTime(item.time)} : {item.routine}
             </Text>
+
+      <TouchableOpacity
+        onPress={() =>
+          router.push({
+            pathname: '../FocusTimer',
+            params: {
+              taskId: item.id,
+              routine: item.routine,
+              time: item.time.toString(),
+            },
+          })
+        }
+        style={styles.beginButton}
+      >
+        <Text style={styles.buttonText}>Begin</Text>
+      </TouchableOpacity>
+
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
@@ -161,17 +178,17 @@ const styles = StyleSheet.create({
     margin: 60,
     color: 'white',
   },
-  button: {
-    backgroundColor: '#4e6ab0',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 5,
-  },
+  // button: {
+  //   backgroundColor: '#4e6ab0',
+  //   paddingVertical: 14,
+  //   paddingHorizontal: 20,
+  //   borderRadius: 10,
+  //   elevation: 2,
+  //   shadowColor: '#000',
+  //   shadowOpacity: 0.15,
+  //   shadowOffset: { width: 0, height: 3 },
+  //   shadowRadius: 5,
+  // },
   addButton: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 12,
@@ -214,6 +231,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     flex: 1,
   },
+  beginButton: {
+  backgroundColor: '#5cb85c',
+  paddingVertical: 6,
+  paddingHorizontal: 12,
+  borderRadius: 10,
+  marginRight: 10,
+},
   deleteButton: {
     backgroundColor: '#ff5c5c',
     paddingVertical: 6,

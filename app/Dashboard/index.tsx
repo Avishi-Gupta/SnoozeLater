@@ -1,26 +1,45 @@
+import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
-import { updateUserProfile } from '../../lib/api';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; email: string } | null>(null);
-  const [newUsername, setNewUsername] = useState('');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     const loadUserInfo = async () => {
       try {
-        const userInfoString = await AsyncStorage.getItem('userInfo');
-        if (userInfoString) {
-          const userInfo = JSON.parse(userInfoString);
+        const storedUser = await AsyncStorage.getItem('userInfo');
 
-          setUser({
-            username: typeof userInfo.username === 'string' ? userInfo.username : '',
-            email: typeof userInfo.email === 'string' ? userInfo.email : '',
-          });
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        setUser(parsed);
+        return;
+      }
+
+      const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+
+        if (!authUser) return;
+
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('username, email')
+          .eq('id', authUser.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error.message);
+          return;
         }
+
+        setUser(profile);
+        await AsyncStorage.setItem('userInfo', JSON.stringify(profile));
+
       } catch (error) {
         console.error('Failed to load user info:', error);
       }
@@ -29,35 +48,33 @@ export default function HomeScreen() {
     loadUserInfo();
   }, []);
 
-  const handleUpdateUsername = async () => {
-    if (!newUsername.trim()) {
-      setMessage('Please enter a new username.');
-      return;
-    }
 
-    try {
-      await updateUserProfile(newUsername);
-      const updatedUser = {
-        username: newUsername,
-        email: user?.email ?? '',
-      };
-      setUser(updatedUser);
-      await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
-      setMessage('Username updated successfully!');
-      setNewUsername('');
-    } catch (error) {
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('An unexpected error occurred.');
-      }
-    }
-  };
+  // useEffect(() => {
+  //   const loadUserInfo = async () => {
+  //     try {
+  //       const userInfoString = await AsyncStorage.getItem('userInfo');
+  //       if (userInfoString) {
+  //         const userInfo = JSON.parse(userInfoString);
+
+  //         setUser({
+  //           username: typeof userInfo.username === 'string' ? userInfo.username : '',
+  //           email: typeof userInfo.email === 'string' ? userInfo.email : '',
+  //         });
+  //       }
+  //     } catch (error) {
+  //       console.error('Failed to load user info:', error);
+  //     }
+  //   };
+
+  //   loadUserInfo();
+  // }, []);
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
-    router.replace('/login'); // redirect to login screen
+    await supabase.auth.signOut(); 
+    await AsyncStorage.removeItem('userInfo');
+    router.replace('/login');
   };
+
 
   return (
     <View style={styles.container}>
@@ -66,22 +83,15 @@ export default function HomeScreen() {
           <Text style={styles.title}>Welcome, {user.username}!</Text>
           <Text style={styles.subtitle}>Email: {user.email}</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="New username"
-            value={newUsername}
-            onChangeText={setNewUsername}
-          />
-
-          <TouchableOpacity style={styles.button} onPress={handleUpdateUsername}>
-            <Text style={styles.buttonText}>Update Username</Text>
-          </TouchableOpacity>
-
-          <Text style={styles.message}>{message}</Text>
-
-          <TouchableOpacity style={[styles.button, { marginTop: 20 }]} onPress={handleLogout}>
+          <TouchableOpacity style={[styles.button, { margin: 20 }]} onPress={handleLogout}>
             <Text style={styles.buttonText}>Logout</Text>
           </TouchableOpacity>
+
+          
+      <TouchableOpacity style={styles.button} onPress={() => {
+    router.push('../settings');}}>
+        <Text style={styles.buttonText}>Settings</Text>
+      </TouchableOpacity>
         </>
       ) : (
         <Text style={styles.title}>Loading...</Text>

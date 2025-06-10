@@ -4,7 +4,7 @@ import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'rea
 // import { registerUser } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
-export const registerUser = async (email: string, password: string) => {
+export const registerUser = async (email: string, password: string, username: string) => {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -14,34 +14,46 @@ export const registerUser = async (email: string, password: string) => {
     throw new Error(error.message);
   }
 
+  const user = data.user;
+  if (!user) throw new Error('No user returned after signup');
+
+  const { error: profileError } = await supabase
+    .from('profiles')
+    .insert([{ id: user.id, username, email }]);
+
+  if (profileError) {
+    throw new Error('Profile creation failed: ' + profileError.message);
+  }
+
+
   return data;
 };
 
 export default function Register() {
   const router = useRouter();
-  const [username, setUsername] = useState('')
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
-const handleRegister = async () => {
-  if (!email || !password) {
-    setMessage('Please enter both email and password');
-    return;
-  }
-
-  try {
-    await registerUser(email, password);
-    setMessage('Registered successfully!');
-    router.replace('/login');
-  } catch (error) {
-    if (error instanceof Error) {
-      setMessage('Registration failed: ' + error.message);
-    } else {
-      setMessage('Registration failed: Unknown error');
+  const handleRegister = async () => {
+    if (!email || !password || !username) {
+      setMessage('Please enter email, username, and password');
+      return;
     }
-  }
-};
+
+    try {
+      await registerUser(email, password, username);
+      setMessage('Registered successfully!');
+      router.replace('/login');
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage('Registration failed: ' + error.message);
+      } else {
+        setMessage('Registration failed: Unknown error');
+      }
+    }
+  };
 
   return (
     <View style={styles.container}>

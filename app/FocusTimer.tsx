@@ -1,4 +1,5 @@
 
+import { Audio } from 'expo-av';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -17,8 +18,11 @@ export default function FocusTimer() {
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [endOptions, setEndOptions] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
+
 
   useEffect(() => {
     if (isRunning && !isPaused) {
@@ -26,7 +30,9 @@ export default function FocusTimer() {
         setSecondsLeft((prev) => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
+            playAlarm();
             setIsRunning(false);
+            setEndOptions(true);
             return 0;
           }
           return prev - 1;
@@ -38,6 +44,29 @@ export default function FocusTimer() {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isRunning, isPaused]);
+
+  useEffect(() => {
+  const loadSound = async () => {
+    const { sound } = await Audio.Sound.createAsync(
+      require('@/assets/sound/alarm-clock.mp3')
+    );
+    soundRef.current = sound;
+  };
+
+  loadSound();
+
+   return () => {
+    if (soundRef.current) {
+      soundRef.current.unloadAsync();
+    }
+  };
+}, []);
+
+const playAlarm = async () => {
+    if (soundRef.current) {
+      await soundRef.current.replayAsync();
+    }
+};
 
   function formatTime(seconds: number) {
     const minutes = Math.floor(seconds / 60);
@@ -107,6 +136,35 @@ export default function FocusTimer() {
         </>
       )}
 
+    {endOptions && (
+  <View style={styles.popupOverlay}>
+    <View style={styles.popupContainer}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>Time's up!</Text>
+
+      <TouchableOpacity
+        style={[styles.button, { marginBottom: 10, backgroundColor: '#4e6ab0' }]}
+        onPress={() => {
+          setIsRunning(false);
+          setIsPaused(false);
+          setEndOptions(false);
+        }}
+      >
+        <Text style={styles.buttonText}>Need More Time</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#5cb85c' }]}
+        onPress={() => {
+          router.replace('/Dashboard/DailyPlanner');
+        }}
+      >
+        <Text style={styles.buttonText}>Mark as Completed</Text>
+      </TouchableOpacity>
+    </View>
+  </View>
+)}
+
+
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
         onPress={() => router.replace('/Dashboard/DailyPlanner')}
@@ -164,4 +222,19 @@ const styles = StyleSheet.create({
     marginRight: 15,
     textAlign: 'center',
   },
+  popupOverlay: {
+  position: 'absolute',
+  top: 0, left: 0, right: 0, bottom: 0,
+  backgroundColor: 'rgba(0,0,0,0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 10,
+},
+popupContainer: {
+  backgroundColor: '#fff',
+  padding: 24,
+  borderRadius: 12,
+  alignItems: 'center',
+  width: '80%',
+},
 });

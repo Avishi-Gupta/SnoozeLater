@@ -1,36 +1,48 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-//import { loginUser } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
-export const loginUser = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({
+export const loginUser = async (username: string, password: string) => {
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('email')
+    .eq('username', username)
+    .single();
+
+  if (profileError || !profile) {
+    throw new Error('No user found with that username');
+  }
+
+  const { email } = profile;
+
+  const { error: loginError } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) {
-    throw new Error(error.message);
+  
+  if (loginError) {
+    throw new Error(loginError.message);
   }
 
-  return data;
+  return email;
 };
 
 export default function Login() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!username || !password) {
       setMessage('Please enter both email and password');
       return;
     }
 
     try {
-      await loginUser(email, password);
+      await loginUser(username, password);
       setMessage('Login successful!');
       router.replace('/Dashboard');
     } catch (error) {
@@ -45,7 +57,7 @@ export default function Login() {
 
   return (
     <View style={styles.container}>
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} style={styles.input} placeholderTextColor="#FFFFFF"/>
+      <TextInput placeholder="Username" value={username} onChangeText={setUsername} style={styles.input} placeholderTextColor="#FFFFFF"/>
       <TextInput placeholder="Password" value={password} onChangeText={setPassword} secureTextEntry style={styles.input} placeholderTextColor="#FFFFFF"/>
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
               <Text style={styles.buttonText}>Login</Text>

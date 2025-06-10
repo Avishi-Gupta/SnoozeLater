@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+       "infoPlist": {
+        "NSMicrophoneUsageDescription": "This app uses audio for alarms.",
+        "NSAudioUsageDescription": "This app plays alarm sounds to notify you when the timer ends."
+      }
     },
     "android": {
       "adaptiveIcon": {
