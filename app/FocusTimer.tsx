@@ -39,11 +39,13 @@ export default function FocusTimer() {
     };
   }, [isRunning, isPaused]);
 
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
+  function formatTime(seconds: number) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const Mins = minutes < 10 ? '0' + minutes : minutes;
+    const Secs = secs < 10 ? '0' + secs : secs;
+    return Mins + ':' + Secs;
+  }
 
   const handleStart = () => {
     const mins = parseInt(inputMinutes);

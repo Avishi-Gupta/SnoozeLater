@@ -37,6 +37,19 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cb06879c-e676-4cb8-8bcf-069f253bb7ca"
+      }
+    },
+    "owner": "avishi-gupta",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/cb06879c-e676-4cb8-8bcf-069f253bb7ca"
     }
   }
 }
