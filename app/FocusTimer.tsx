@@ -1,6 +1,8 @@
 
+import { supabase } from '@/lib/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
@@ -19,6 +21,7 @@ export default function FocusTimer() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [endOptions, setEndOptions] = useState(false);
+  const { taskId, taskTime } = useLocalSearchParams();
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -98,6 +101,8 @@ const playAlarm = async () => {
     setSecondsLeft(0);
   };
 
+  
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Focus Timer</Text>
@@ -152,14 +157,71 @@ const playAlarm = async () => {
         <Text style={styles.buttonText}>Need More Time</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#5cb85c' }]}
-        onPress={() => {
-          router.replace('/Dashboard/DailyPlanner');
-        }}
-      >
-        <Text style={styles.buttonText}>Mark as Completed</Text>
-      </TouchableOpacity>
+<TouchableOpacity
+  style={[styles.button, { backgroundColor: '#5cb85c' }]}
+  onPress={async () => {
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    
+    const scheduled = new Date(taskTime as string); 
+    const now = new Date(); 
+    const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
+
+
+    let points = 0;
+    if (diffMins <= 5) {
+      points = 500;
+    } else {
+      points = Math.max(0, 500 - diffMins * 10);
+    }
+
+
+    const { data: existing, error } = await supabase
+      .from('points')
+      .select('total_points')
+      .eq('user_id', user.id)
+      .single();
+
+    if (existing) {
+      await supabase
+        .from('points')
+        .update({
+          total_points: existing.total_points + points,
+          updated_at: now,
+        })
+        .eq('user_id', user.id);
+    } else {
+      await supabase
+        .from('points')
+        .insert({
+          user_id: user.id,
+          total_points: points,
+          updated_at: now,
+        });
+    }
+
+    await supabase
+      .from('tasks') 
+      .delete()
+      .eq('id', taskId)
+      .eq('user_id', user.id); 
+
+  
+    const stored = await AsyncStorage.getItem('tasks');
+    if (stored) {
+      const tasks = JSON.parse(stored);
+      const updated = tasks.filter((t: any) => t.id !== taskId);
+      await AsyncStorage.setItem('tasks', JSON.stringify(updated));
+    }
+
+    router.replace('/Dashboard/DailyPlanner');
+  }}
+>
+  <Text style={styles.buttonText}>Mark as Completed</Text>
+</TouchableOpacity>
+
     </View>
   </View>
 )}

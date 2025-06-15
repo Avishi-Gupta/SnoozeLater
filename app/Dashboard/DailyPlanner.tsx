@@ -1,11 +1,19 @@
+import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-type Task = { id: string; routine: string; time: Date };
+type Task = {
+  id: string;
+  routine: string;
+  time: Date;
+  repeat?: boolean;
+  notifId?: string;
+};
 
 export default function PlannerScreen() {
   const router = useRouter();
@@ -14,42 +22,101 @@ export default function PlannerScreen() {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [chooseTime, setChooseTime] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [sleepTime, setSleepTime] = useState<Date | null>(null);
+  const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
+  const [repeat, setRepeat] = useState(false);
+
 
   useEffect(() => {
     const loadTasks = async () => {
-      const storedTasks = await AsyncStorage.getItem('tasks');
-      if (storedTasks) {
-        const parsed = JSON.parse(storedTasks);
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('time', { ascending: true });
 
-        const fixedTasks = parsed.map((task: any) => ({
-          ...task,
-          time: task.time ? new Date(task.time) : new Date(),
-        }));
+    if (error) {
+      console.error('Error loading tasks:', error.message);
+      return;
+    }
 
-        setTasks(fixedTasks);
-      }
-    };
+    if (data) {
+      const fixedTasks = data.map((task: any) => ({
+        ...task,
+        time: new Date(task.time),
+      }));
+      setTasks(fixedTasks);
+      await AsyncStorage.setItem('tasks', JSON.stringify(fixedTasks)); 
+    }
+  };
 
-    loadTasks();
-  }, []);
+  loadTasks();
+}, []);
 
   useEffect(() => {
     AsyncStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-  const handleFocusTimerPress = () => {
-    router.push('../FocusTimer');
+useEffect(() => {
+  const saveTasks = async () => {
+    await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+    const { data, error: userError } = await supabase.auth.getUser();
+
+    if (userError || !data.user) {
+      return;
+    }
+    const userId = data.user.id;
+
+    for (const task of tasks) {
+      await supabase.from('tasks').upsert({
+        id: task.id, 
+        routine: task.routine, 
+        time: task.time.toISOString(),
+        user_id: userId, 
+      });
+    }
   };
 
-  function formatTime(date: Date) {
-  if (!(date instanceof Date)) date = new Date(date); 
+  if (tasks.length > 0) {
+    saveTasks(); 
+  }
+}, [tasks]); 
+
+useEffect(() => {
+    fetchSleepTimes();
+  }, []);
+
+  const fetchSleepTimes = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('sleep_data')
+      .select('target_sleep_time, target_wake_time')
+      .eq('user_id', user.id)
+      .order('inserted_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!error && data) {
+      if (data.target_sleep_time) setSleepTime(new Date(data.target_sleep_time));
+      if (data.target_wake_time) setWakeUpTime(new Date(data.target_wake_time));
+
+      // Schedule sleep notification and alarm
+      if (data.target_sleep_time) scheduleNotification('Sleep Time', new Date(data.target_sleep_time), true);
+      if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time)); // ALARM
+    }
+  };
+
+
+  function formatTime(date: Date | null) {
+if (!date) return '--:--';
     let hours = date.getHours();
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
 
-  async function scheduleNotification(title: string, date: Date) {
-    await Notifications.scheduleNotificationAsync({
+  async function scheduleNotification(title: string, date: Date, repeat: boolean){
+     const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Routine Reminder',
         body: `Time for: ${title}`,
@@ -58,32 +125,74 @@ export default function PlannerScreen() {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
         hour: date.getHours(),
         minute: date.getMinutes(),
-        repeats: false,
+        repeats: repeat,
       },
     });
+
+    return id;
   }
 
-  function handleAddTask() {
-    if (routine.trim() === '') return;
+async function scheduleAlarm(date: Date) {
+    const now = new Date();
+    const delay = date.getTime() - now.getTime();
+    if (delay <= 0) return;
 
-    const newTask: Task = {
-      id: String(Date.now()),
-      routine,
-      time: selectedTime,
-    };
-
-    const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
-
-    setTasks(updatedTasks);
-    setRoutine('');
-    setSelectedTime(new Date());
-
-    scheduleNotification(routine, selectedTime);
+    setTimeout(() => {
+      const sound = new Audio.Sound();
+      (async () => {
+        try {
+          await sound.loadAsync(require('@/assets/alarm-clock.mp3')); 
+          await sound.playAsync();
+        } catch (error) {
+          console.error('Alarm error:', error);
+        }
+      })();
+    }, delay);
   }
 
-  function handleDeleteTask(id: string) {
-    setTasks(tasks.filter((task) => task.id !== id));
+async function handleAddTask() {
+  if (routine.trim() === '') return;
+
+  const notifId = await scheduleNotification(routine, selectedTime, repeat);
+
+  const newTask: Task = {
+    id: String(Date.now()),
+    routine,
+    time: selectedTime,
+    repeat,
+    notifId,
+  };
+
+  const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
+
+  setTasks(updatedTasks);
+  setRoutine('');
+  setSelectedTime(new Date());
+  setRepeat(false);
+}
+
+
+const handleDeleteTask = async (taskId: string) => {
+  const taskToDelete = tasks.find((t) => t.id === taskId);
+
+  if (taskToDelete?.notifId) {
+    await Notifications.cancelScheduledNotificationAsync(taskToDelete.notifId);
   }
+
+  const { error } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('id', taskId);
+
+  if (error) {
+    console.error('Error deleting from Supabase:', error.message);
+  }
+
+  const updated = tasks.filter((t) => t.id !== taskId);
+  await AsyncStorage.setItem('tasks', JSON.stringify(updated));
+  setTasks(updated); 
+};
+
 
   return (
     <View style={styles.container}>
@@ -122,13 +231,33 @@ export default function PlannerScreen() {
   </View>
 )}
 
+<View style={{ flexDirection: 'row', marginBottom: 10 }}>
+  <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
+    <Text style={styles.buttonText}>Once</Text>
+  </TouchableOpacity>
+  <TouchableOpacity onPress={() => setRepeat(true)} style={[styles.repeatButton, repeat && styles.selectedRepeat]}>
+    <Text style={styles.buttonText}>Repeat</Text>
+  </TouchableOpacity>
+</View>
+
       <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
         <Text style={styles.buttonText}>Add Task</Text>
       </TouchableOpacity>
-{/* 
-      <TouchableOpacity style={styles.button} onPress={handleFocusTimerPress}>
-        <Text style={styles.buttonText}>Start Focus Timer</Text>
-      </TouchableOpacity> */}
+
+      <View style={styles.timeRow}>
+  <Text style={styles.timeLabel}>Sleep Time: {formatTime(sleepTime)}</Text>
+  <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+    <Text style={styles.buttonText}>Set Sleep Time</Text>
+  </TouchableOpacity>
+</View>
+
+<View style={styles.timeRow}>
+  <Text style={styles.timeLabel}>Wake Up Time: {formatTime(wakeUpTime)}</Text>
+  <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+    <Text style={styles.buttonText}>Set Wake Time</Text>
+  </TouchableOpacity>
+</View>
+
 
       <FlatList
         data={tasks}
@@ -145,8 +274,7 @@ export default function PlannerScreen() {
             pathname: '../FocusTimer',
             params: {
               taskId: item.id,
-              routine: item.routine,
-              time: item.time.toString(),
+              taskTime: item.time.toString(),
             },
           })
         }
@@ -178,17 +306,6 @@ const styles = StyleSheet.create({
     margin: 60,
     color: 'white',
   },
-  // button: {
-  //   backgroundColor: '#4e6ab0',
-  //   paddingVertical: 14,
-  //   paddingHorizontal: 20,
-  //   borderRadius: 10,
-  //   elevation: 2,
-  //   shadowColor: '#000',
-  //   shadowOpacity: 0.15,
-  //   shadowOffset: { width: 0, height: 3 },
-  //   shadowRadius: 5,
-  // },
   addButton: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 12,
@@ -273,4 +390,41 @@ closeButton: {
   paddingHorizontal: 16,
   borderRadius: 8,
 },
+timeRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  width: '70%',
+  marginBottom: 3,
+},
+timeLabel: {
+  color: '#fff',
+  fontSize: 16,
+  marginBottom: 15,
+  width: '50%',
+},
+
+    timeButton: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '70%',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+  },
+  repeatButton: {
+  padding: 10,
+  backgroundColor: '#4e6ab0',
+  borderRadius: 8,
+  marginHorizontal: 5,
+},
+selectedRepeat: {
+  backgroundColor: '#2e4a8b',
+},
+
 });

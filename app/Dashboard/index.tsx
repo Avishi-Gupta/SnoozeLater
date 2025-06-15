@@ -48,29 +48,8 @@ export default function HomeScreen() {
     loadUserInfo();
   }, []);
 
-
-  // useEffect(() => {
-  //   const loadUserInfo = async () => {
-  //     try {
-  //       const userInfoString = await AsyncStorage.getItem('userInfo');
-  //       if (userInfoString) {
-  //         const userInfo = JSON.parse(userInfoString);
-
-  //         setUser({
-  //           username: typeof userInfo.username === 'string' ? userInfo.username : '',
-  //           email: typeof userInfo.email === 'string' ? userInfo.email : '',
-  //         });
-  //       }
-  //     } catch (error) {
-  //       console.error('Failed to load user info:', error);
-  //     }
-  //   };
-
-  //   loadUserInfo();
-  // }, []);
-
   const handleLogout = async () => {
-    await supabase.auth.signOut(); 
+    await supabase.auth.signOut();
     await AsyncStorage.removeItem('userInfo');
     router.replace('/login');
   };
