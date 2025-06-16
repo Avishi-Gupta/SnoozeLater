@@ -133,7 +133,6 @@ export default function SleepTimer() {
   const durationHours = Math.floor(durationMs / 3600000);
 
   if (sleepId) {
-    // Check if current row already has sleep_time/wake_time
     const { data: existingRow, error: fetchError } = await supabase
       .from('sleep_data')
       .select('sleep_time, wake_time')
@@ -208,13 +207,11 @@ const awardSleepPoints = async () => {
   const actualSleep = new Date(data.sleep_time);
   const actualWake = new Date(data.wake_time);
 
-  // Calculate deviations in minutes
   const sleepDiffMins = Math.abs(Math.floor((actualSleep.getTime() - targetSleep.getTime()) / 60000));
   const wakeDiffMins = Math.abs(Math.floor((actualWake.getTime() - targetWake.getTime()) / 60000));
 
   let points = 0;
 
-  // Sleep/wake timing points
   const totalDeviation = sleepDiffMins + wakeDiffMins;
   if (totalDeviation <= 10) {
     points = 500;
@@ -222,13 +219,11 @@ const awardSleepPoints = async () => {
     points = Math.max(0, 500 - (totalDeviation / 10) * 10);
   }
 
-  // Duration penalty
   const sleepDurationHrs = (actualWake.getTime() - actualSleep.getTime()) / 3600000;
   if (sleepDurationHrs < 7.5 || sleepDurationHrs > 9) {
     points -= 200;
   }
 
-  // Clamp to 0 minimum
   points = Math.max(0, points);
 
   const now = new Date();
