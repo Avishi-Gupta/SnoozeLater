@@ -100,13 +100,18 @@ useEffect(() => {
     if (!error && data) {
       if (data.target_sleep_time) setSleepTime(new Date(data.target_sleep_time));
       if (data.target_wake_time) setWakeUpTime(new Date(data.target_wake_time));
+      
+      await cancelPreviousSleepNotifications();
 
-      // Schedule sleep notification and alarm
-      if (data.target_sleep_time) scheduleNotification('Sleep Time', new Date(data.target_sleep_time), true);
-      if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time)); // ALARM
+      if (data.target_sleep_time) {
+        await scheduleSleepOrWakeNotification('Sleep Time', new Date(data.target_sleep_time), true);
+      }
+      if (data.target_wake_time) {
+        await scheduleSleepOrWakeNotification('Wake Up Time', new Date(data.target_wake_time), true);
+      }
+      if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time));
     }
   };
-
 
   function formatTime(date: Date | null) {
 if (!date) return '--:--';
@@ -114,7 +119,7 @@ if (!date) return '--:--';
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
-
+  
   async function scheduleNotification(title: string, date: Date, repeat: boolean){
      const id = await Notifications.scheduleNotificationAsync({
       content: {
@@ -131,6 +136,39 @@ if (!date) return '--:--';
 
     return id;
   }
+
+  const cancelPreviousSleepNotifications = async () => {
+  const stored = await AsyncStorage.getItem('sleepNotificationIds');
+  if (stored) {
+    const ids = JSON.parse(stored);
+    for (const id of ids) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+  }
+  await AsyncStorage.removeItem('sleepNotificationIds');
+};
+
+async function scheduleSleepOrWakeNotification(title: string, date: Date, repeat: boolean) {
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Routine Reminder',
+      body: `Time for: ${title}`,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      repeats: repeat,
+    },
+  });
+
+  const existing = await AsyncStorage.getItem('sleepNotificationIds');
+  const ids = existing ? JSON.parse(existing) : [];
+  ids.push(id);
+  await AsyncStorage.setItem('sleepNotificationIds', JSON.stringify(ids));
+
+  return id;
+}
 
 async function scheduleAlarm(date: Date) {
     const now = new Date();

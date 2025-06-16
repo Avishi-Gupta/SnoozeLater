@@ -28,7 +28,6 @@ export default function Settings() {
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; email: string } | null>(null);
   const [newUsername, setNewUsername] = useState('');
-  const [newEmail, setNewEmail] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [message, setMessage] = useState('');
 
@@ -73,31 +72,7 @@ export default function Settings() {
     }
   };
 
-  const handleUpdateEmail = async () => {
-    if (!newEmail.trim()) {
-      setMessage('Please enter a new email.');
-      return;
-    }
 
-    try {
-      const { error } = await supabase.auth.updateUser({ email: newEmail });
-      if (error) throw error;
-
-      const updatedUser = { username: user?.username ?? '',
-      email: newEmail, };
-      setUser(updatedUser);
-      await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
-      
-      setMessage('Email updated successfully!');
-      setNewEmail('');
-    } catch (error) {
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('Unexpected error updating email.');
-      }
-    }
-  };
 
   const handleUpdatePassword = async () => {
     if (!newPassword.trim()) {
@@ -133,17 +108,6 @@ export default function Settings() {
             <Text style={styles.buttonText}>Update Username</Text>
           </TouchableOpacity>
 
-          <TextInput
-        style={styles.input}
-        placeholder="New email"
-        keyboardType="email-address"
-        value={newEmail}
-        onChangeText={setNewEmail}
-        />
-        <TouchableOpacity style={styles.button} onPress={handleUpdateEmail}>
-          <Text style={styles.buttonText}>Update Email</Text>
-        </TouchableOpacity>
-
         <TextInput
         style={styles.input}
         placeholder="New password"
@@ -159,7 +123,7 @@ export default function Settings() {
 
                 <TouchableOpacity
                   style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
-                  onPress={() => router.replace('/Dashboard/Profile')}
+                  onPress={() => router.replace('./Dashboard')}
                 >
                   <Text style={styles.buttonText}>Back to Home</Text>
                 </TouchableOpacity>
