@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
 
 export const updateUserProfile = async (newUsername: string) => {
@@ -28,7 +28,24 @@ export default function Settings() {
   const router = useRouter();
   const [user, setUser] = useState<{ username: string; email: string } | null>(null);
   const [newUsername, setNewUsername] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('userInfo');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+      } catch (error) {
+        console.error("Failed to load user data", error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
 
   const handleUpdateUsername = async () => {
@@ -56,6 +73,53 @@ export default function Settings() {
     }
   };
 
+  const handleUpdateEmail = async () => {
+    if (!newEmail.trim()) {
+      setMessage('Please enter a new email.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
+      if (error) throw error;
+
+      const updatedUser = { username: user?.username ?? '',
+      email: newEmail, };
+      setUser(updatedUser);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
+      
+      setMessage('Email updated successfully!');
+      setNewEmail('');
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage('Unexpected error updating email.');
+      }
+    }
+  };
+
+  const handleUpdatePassword = async () => {
+    if (!newPassword.trim()) {
+      setMessage('Please enter a new password.');
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+
+      setMessage('Password updated successfully!');
+      setNewPassword('');
+    } catch (error) {
+      if (error instanceof Error) {
+        setMessage(error.message);
+      } else {
+        setMessage('Unexpected error updating password.');
+      }
+    }
+  };
+
   return (
     <View style={styles.container}>
           <TextInput
@@ -69,11 +133,33 @@ export default function Settings() {
             <Text style={styles.buttonText}>Update Username</Text>
           </TouchableOpacity>
 
+          <TextInput
+        style={styles.input}
+        placeholder="New email"
+        keyboardType="email-address"
+        value={newEmail}
+        onChangeText={setNewEmail}
+        />
+        <TouchableOpacity style={styles.button} onPress={handleUpdateEmail}>
+          <Text style={styles.buttonText}>Update Email</Text>
+        </TouchableOpacity>
+
+        <TextInput
+        style={styles.input}
+        placeholder="New password"
+        secureTextEntry
+        value={newPassword}
+        onChangeText={setNewPassword}
+        />
+        <TouchableOpacity style={styles.button} onPress={handleUpdatePassword}>
+          <Text style={styles.buttonText}>Update Password</Text>
+          </TouchableOpacity>
+
           <Text style={styles.message}>{message}</Text>
 
                 <TouchableOpacity
                   style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
-                  onPress={() => router.replace('./Dashboard')}
+                  onPress={() => router.replace('/Dashboard/Profile')}
                 >
                   <Text style={styles.buttonText}>Back to Home</Text>
                 </TouchableOpacity>

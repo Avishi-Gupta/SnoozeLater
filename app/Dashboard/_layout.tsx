@@ -26,13 +26,7 @@ export default function TabLayout() {
           default: {},
         }),
       }}>
-      <Tabs.Screen 
-        name="index"
-        options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
-        }}
-      />
+
       <Tabs.Screen
         name="DailyPlanner"
         options={{
@@ -48,7 +42,7 @@ export default function TabLayout() {
         }}
       />
             <Tabs.Screen
-        name="LeaderBoard"
+        name="Leaderboard"
         options={{
           title: 'Leaderboard',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="medal.fill" color={color} />,
@@ -59,6 +53,13 @@ export default function TabLayout() {
         options={{
           title: 'Insights',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+        }}
+      />
+            <Tabs.Screen
+        name="Profile"
+        options={{
+          title: 'Profile',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.circle.fill" color={color} />,
         }}
       />
     </Tabs>

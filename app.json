@@ -13,7 +13,12 @@
        "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses audio for alarms.",
         "NSAudioUsageDescription": "This app plays alarm sounds to notify you when the timer ends."
-      }
+      },
+      "permissions": [
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "MEDIA_LIBRARY"
+      ]
     },
     "android": {
       "adaptiveIcon": {

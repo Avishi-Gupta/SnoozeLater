@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
@@ -6,7 +7,7 @@ import { supabase } from '../lib/supabase';
 export const loginUser = async (username: string, password: string) => {
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('email')
+    .select('id, email')
     .eq('username', username)
     .single();
 
@@ -26,7 +27,7 @@ export const loginUser = async (username: string, password: string) => {
     throw new Error(loginError.message);
   }
 
-  return email;
+  return profile;
 };
 
 export default function Login() {
@@ -42,9 +43,10 @@ export default function Login() {
     }
 
     try {
-      await loginUser(username, password);
+      const userProfile = await loginUser(username, password);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(userProfile));
       setMessage('Login successful!');
-      router.replace('/Dashboard');
+      router.replace('/Dashboard/Profile');
     } catch (error) {
         if (error instanceof Error) {
     setMessage(error.message);
