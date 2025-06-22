@@ -5,7 +5,7 @@ import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Task = {
   id: string;
@@ -59,6 +59,7 @@ export default function PlannerScreen() {
 useEffect(() => {
   const saveTasks = async () => {
     await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+
     const { data, error: userError } = await supabase.auth.getUser();
 
     if (userError || !data.user) {
@@ -68,10 +69,11 @@ useEffect(() => {
 
     for (const task of tasks) {
       await supabase.from('tasks').upsert({
-        id: task.id, 
-        routine: task.routine, 
+        id: task.id,
+        routine: task.routine,
         time: task.time.toISOString(),
-        user_id: userId, 
+        user_id: userId,
+        repeat: task.repeat ?? false, 
       });
     }
   };
@@ -100,14 +102,12 @@ useEffect(() => {
     if (!error && data) {
       if (data.target_sleep_time) setSleepTime(new Date(data.target_sleep_time));
       if (data.target_wake_time) setWakeUpTime(new Date(data.target_wake_time));
-      
-      await cancelPreviousSleepNotifications();
 
       if (data.target_sleep_time) {
-        await scheduleSleepOrWakeNotification('Sleep Time', new Date(data.target_sleep_time), true);
+        await scheduleSleepOrWakeNotification('Sleep', new Date(data.target_sleep_time), true);
       }
       if (data.target_wake_time) {
-        await scheduleSleepOrWakeNotification('Wake Up Time', new Date(data.target_wake_time), true);
+        await scheduleSleepOrWakeNotification('Waking Up', new Date(data.target_wake_time), true);
       }
       if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time));
     }
@@ -137,22 +137,30 @@ if (!date) return '--:--';
     return id;
   }
 
-  const cancelPreviousSleepNotifications = async () => {
-  const stored = await AsyncStorage.getItem('sleepNotificationIds');
+const cancelOldNotification = async (key: string) => {
+  const stored = await AsyncStorage.getItem(key);
   if (stored) {
     const ids = JSON.parse(stored);
     for (const id of ids) {
       await Notifications.cancelScheduledNotificationAsync(id);
     }
+    await AsyncStorage.removeItem(key);
   }
-  await AsyncStorage.removeItem('sleepNotificationIds');
 };
 
-async function scheduleSleepOrWakeNotification(title: string, date: Date, repeat: boolean) {
+  async function scheduleSleepOrWakeNotification(
+  type: 'Sleep' | 'Waking Up',
+  date: Date,
+  repeat: boolean
+) {
+  const key = type === 'Sleep' ? 'sleepNotifIds' : 'wakeNotifIds';
+
+  await cancelOldNotification(key);
+
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Routine Reminder',
-      body: `Time for: ${title}`,
+      body: `Time for: ${type}`,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -162,10 +170,7 @@ async function scheduleSleepOrWakeNotification(title: string, date: Date, repeat
     },
   });
 
-  const existing = await AsyncStorage.getItem('sleepNotificationIds');
-  const ids = existing ? JSON.parse(existing) : [];
-  ids.push(id);
-  await AsyncStorage.setItem('sleepNotificationIds', JSON.stringify(ids));
+  await AsyncStorage.setItem(key, JSON.stringify([id]));
 
   return id;
 }
@@ -318,11 +323,27 @@ const handleDeleteTask = async (taskId: string) => {
         }
         style={styles.beginButton}
       >
-        <Text style={styles.buttonText}>Begin</Text>
+        <Text style={styles.deleteText}>Begin</Text>
       </TouchableOpacity>
 
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={async () => {
+                const task = tasks.find((t) => t.id === item.id);
+                if (!task) return;
+
+                if (!task.repeat) {
+                  await handleDeleteTask(item.id);
+                } else {
+                  Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
+                }
+              }}
+              style={styles.beginButton}
+            >
+              <Text style={styles.deleteText}>Mark Completed</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -383,7 +404,7 @@ const styles = StyleSheet.create({
   },
   taskText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     flex: 1,
   },
   beginButton: {
@@ -391,18 +412,19 @@ const styles = StyleSheet.create({
   paddingVertical: 6,
   paddingHorizontal: 12,
   borderRadius: 10,
-  marginRight: 10,
+  marginRight: 5,
 },
   deleteButton: {
     backgroundColor: '#ff5c5c',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
-    marginLeft: 10,
+    marginRight: 5,
   },
   deleteText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 10,
   },
   pickerOverlay: {
   position: 'absolute',
