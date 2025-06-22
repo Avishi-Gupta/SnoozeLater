@@ -85,14 +85,15 @@ export default function SleepTimer() {
     }
   };
 
-  const stopTimer = () => {
-    setIsRunning(false);
-    setSleepEnd(new Date());
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  };
+const stopTimer = async () => {
+  setIsRunning(false);
+  setSleepEnd(new Date());
+  if (intervalRef.current) {
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
+  }
+  await AsyncStorage.removeItem('sleepStart');
+};
 
   const resetTimer = () => {
     stopTimer();
@@ -102,27 +103,45 @@ export default function SleepTimer() {
     AsyncStorage.removeItem('sleepStart');
   };
 
-  const saveTargetTimes = async () => {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) return alert('Not logged in');
+const saveTargetTimes = async (type: 'sleep' | 'wake') => {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) return alert('Not logged in');
 
+  const updateFields =
+    type === 'sleep'
+      ? { target_sleep_time: sleepTime.toISOString() }
+      : { target_wake_time: wakeTime.toISOString() };
+
+  if (sleepId) {
+    const { error } = await supabase
+      .from('sleep_data')
+      .update(updateFields)
+      .eq('id', sleepId);
+
+    if (error) {
+      alert('Failed to update: ' + error.message);
+    } else {
+      alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
+    }
+  } else {
     const { data, error } = await supabase
       .from('sleep_data')
       .insert({
         user_id: user.id,
-        target_sleep_time: sleepTime.toISOString(),
-        target_wake_time: wakeTime.toISOString(),
+        ...updateFields,
       })
       .select('id')
       .single();
 
     if (error) {
-      alert('Save failed: ' + error.message);
+      alert('Insert failed: ' + error.message);
     } else {
       setSleepId(data.id);
-      alert('Target sleep/wake times saved!');
+      alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
     }
-  };
+  }
+};
+
 
  const saveSleepData = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -291,7 +310,13 @@ const handleSaveAndAwardPoints = async () => {
               }}
               style={{ backgroundColor: '#fff' }}
             />
-            <TouchableOpacity onPress={() => setShowSleepPicker(false)} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowSleepPicker(false);
+                saveTargetTimes('sleep');
+              }}
+              style={styles.closeButton}
+            >
               <Text style={{ color: '#fff' }}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -313,7 +338,13 @@ const handleSaveAndAwardPoints = async () => {
               }}
               style={{ backgroundColor: '#fff' }}
             />
-            <TouchableOpacity onPress={() => setShowWakePicker(false)} style={styles.closeButton}>
+            <TouchableOpacity
+              onPress={() => {
+                setShowWakePicker(false);
+                saveTargetTimes('wake');
+              }}
+              style={styles.closeButton}
+            >
               <Text style={{ color: '#fff' }}>Done</Text>
             </TouchableOpacity>
           </View>
@@ -321,7 +352,7 @@ const handleSaveAndAwardPoints = async () => {
       )}
 
       <View style={styles.actionButtons}>
-        <Button title="Save Target Times" onPress={saveTargetTimes} color="darkblue" />
+        {/* <Button title="Save Target Times" onPress={saveTargetTimes} color="darkblue" /> */}
         <Button title="Back" onPress={() => router.push('/Dashboard/DailyPlanner')} color="darkgrey" />
       </View>
     </View>
@@ -329,12 +360,16 @@ const handleSaveAndAwardPoints = async () => {
 }
 
 function formatClock(seconds: number) {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    const Mins = minutes < 10 ? '0' + minutes : minutes;
-    const Secs = secs < 10 ? '0' + secs : secs;
-    return Mins + ':' + Secs;
-  }
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  const Hrs = hours < 10 ? '0' + hours : hours;
+  const Mins = minutes < 10 ? '0' + minutes : minutes;
+  const Secs = secs < 10 ? '0' + secs : secs;
+
+  return `${Hrs}:${Mins}:${Secs}`;
+}
 
 
   function formatTime(date: Date) {
@@ -384,7 +419,7 @@ const styles = StyleSheet.create({
   actionButtons: {
     flexDirection: 'column',
     gap: 10,
-    marginTop: 30,
+    marginTop: 20,
   },
   pickerOverlay: {
     position: 'absolute',
