@@ -1,7 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -25,6 +24,17 @@ export default function PlannerScreen() {
   const [sleepTime, setSleepTime] = useState<Date | null>(null);
   const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
   const [repeat, setRepeat] = useState(false);
+
+//   const cancelAllNotifications = async () => {
+//   try {
+//     await Notifications.cancelAllScheduledNotificationsAsync();
+//     await AsyncStorage.removeItem('sleepNotifIds');
+//     await AsyncStorage.removeItem('wakeNotifIds');
+//     console.log('All scheduled notifications cancelled.');
+//   } catch (err) {
+//     console.error('Error cancelling notifications:', err);
+//   }
+// };
 
 
   useEffect(() => {
@@ -109,7 +119,6 @@ useEffect(() => {
       if (data.target_wake_time) {
         await scheduleSleepOrWakeNotification('Waking Up', new Date(data.target_wake_time), true);
       }
-      if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time));
     }
   };
 
@@ -160,7 +169,10 @@ const cancelOldNotification = async (key: string) => {
   const id = await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Routine Reminder',
-      body: `Time for: ${type}`,
+      body: `⏰ ${type} Time ⏰`,
+      sound: 'alarm-clock.mp3',
+      vibrate: [500, 500, 500], 
+      priority: Notifications.AndroidNotificationPriority.HIGH,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -174,24 +186,6 @@ const cancelOldNotification = async (key: string) => {
 
   return id;
 }
-
-async function scheduleAlarm(date: Date) {
-    const now = new Date();
-    const delay = date.getTime() - now.getTime();
-    if (delay <= 0) return;
-
-    setTimeout(() => {
-      const sound = new Audio.Sound();
-      (async () => {
-        try {
-          await sound.loadAsync(require('@/assets/alarm-clock.mp3')); 
-          await sound.playAsync();
-        } catch (error) {
-          console.error('Alarm error:', error);
-        }
-      })();
-    }, delay);
-  }
 
 async function handleAddTask() {
   if (routine.trim() === '') return;
@@ -240,6 +234,10 @@ const handleDeleteTask = async (taskId: string) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Plan your day here!</Text>
+      {/* <TouchableOpacity onPress={cancelAllNotifications} style={styles.addButton}>
+  <Text style={styles.buttonText}>🔁 Reset All Notifications</Text>
+</TouchableOpacity> */}
+
 
       <TextInput
         placeholder="What do you want to do?"
@@ -290,16 +288,31 @@ const handleDeleteTask = async (taskId: string) => {
       <View style={styles.timeRow}>
   <Text style={styles.timeLabel}>Sleep Time: {formatTime(sleepTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Set Sleep Time</Text>
+    <Text style={styles.buttonText}>Sleep Time</Text>
   </TouchableOpacity>
 </View>
 
 <View style={styles.timeRow}>
   <Text style={styles.timeLabel}>Wake Up Time: {formatTime(wakeUpTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Set Wake Time</Text>
+    <Text style={styles.buttonText}>Wake Time</Text>
   </TouchableOpacity>
 </View>
+
+    <TouchableOpacity
+      onPress={fetchSleepTimes}
+      style={{
+        backgroundColor: '#4e6ab0',
+        padding: 10,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+        marginBottom: 10,
+        marginTop: 5,
+      }}
+    >
+      <Text style={{ color: 'white' }}>🔄 Refresh</Text>
+    </TouchableOpacity>
+
 
 
       <FlatList
@@ -362,7 +375,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    margin: 60,
+    margin: 30,
     color: 'white',
   },
   addButton: {
