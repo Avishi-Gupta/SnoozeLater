@@ -76,12 +76,10 @@ export default function Profile() {
         const fileName = `${userId}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
   
-        // Read the image as base64
         const base64 = await FileSystem.readAsStringAsync(image.uri, {
           encoding: FileSystem.EncodingType.Base64,
         });
   
-        // Upload the base64 image to Supabase
         const { error: uploadError } = await supabase.storage
           .from('profile-pictures')
           .upload(filePath, base64, {
@@ -95,15 +93,14 @@ export default function Profile() {
           return;
         }
   
-        // Get the public URL of the uploaded image
         const { data: urlData } = supabase.storage
           .from('profile-pictures')
           .getPublicUrl(filePath);
   
         const publicUrl = urlData.publicUrl;
+
         setImageUri(publicUrl);
   
-        // Update the user's profile in the database with the new avatar URL
         await supabase.from('profiles').upsert({
           id: userId,
           avatar_url: publicUrl,
