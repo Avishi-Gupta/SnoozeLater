@@ -24,9 +24,10 @@ const fetchLeaderboard = async () => {
     .order('total_points', { ascending: false })
     .limit(10);
 
-  let enriched: any[] = [];
+
+  let top10: any[] = [];
   if (!topError) {
-    enriched = await Promise.all(
+    top10 = await Promise.all(
       top.map(async (item: any) => {
         const { data: profile } = await supabase
           .from('profiles')
@@ -40,7 +41,7 @@ const fetchLeaderboard = async () => {
         };
       })
     );
-    setTopUsers(enriched);
+    setTopUsers(top10);
   }
 
   const { data: allUsers } = await supabase
@@ -64,7 +65,7 @@ const fetchLeaderboard = async () => {
     setCurrentUser({
       id: user.id,
       points: myEntry.total_points,
-      name: `${profile?.username || 'You'} (You)`,
+      name: 'You',
     });
   }
 };
@@ -80,14 +81,17 @@ const fetchLeaderboard = async () => {
           <View style={styles.item}>
             <Text style={styles.rank}>{index + 1}.</Text>
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.points}>{item.points} pts</Text>
+            <Text style={styles.points}>{item.points} points</Text>
           </View>
         )}
       />
 
- {currentUser && userRank && (
+{currentUser && userRank !== null && (
   <>
     <View style={{ height: 10 }} />
+    <Text style={{ color: 'white', marginTop: 12, marginBottom: 4 }}>
+      Your Rank
+    </Text>
     <View style={[styles.item, styles.userRow]} key="your-rank-row">
       <Text style={styles.rank}>{userRank}.</Text>
       <Text style={styles.name}>{currentUser.name}</Text>
