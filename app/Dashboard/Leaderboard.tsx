@@ -1,20 +1,80 @@
+import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, View } from 'react-native';
 
-const leaderboardData = [
-  { id: '1', name: 'Alice', points: 150 },
-  { id: '2', name: 'Bob', points: 130 },
-  { id: '3', name: 'Charlie', points: 120 },
-  { id: '4', name: 'Diana', points: 110 },
-  { id: '5', name: 'Ethan', points: 100 },
-  { id: '6', name: 'Avishi', points: 100 },
-];
-
 export default function Leaderboard() {
+  const [topUsers, setTopUsers] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userRank, setUserRank] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+const fetchLeaderboard = async () => {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) return;
+
+  const { data: top, error: topError } = await supabase
+    .from('points')
+    .select('user_id, total_points')
+    .order('total_points', { ascending: false })
+    .limit(10);
+
+  let enriched: any[] = [];
+  if (!topError) {
+    enriched = await Promise.all(
+      top.map(async (item: any) => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('id', item.user_id)
+          .single();
+        return {
+          id: item.user_id,
+          name: item.user_id === user.id ? `${profile?.username || 'Unknown'} (You)` : profile?.username || 'Unknown',
+          points: item.total_points,
+        };
+      })
+    );
+    setTopUsers(enriched);
+  }
+
+  const { data: allUsers } = await supabase
+    .from('points')
+    .select('user_id, total_points')
+    .order('total_points', { ascending: false });
+
+  const rank = allUsers?.findIndex((u: any) => u.user_id === user.id);
+  if (rank !== undefined && rank !== -1) {
+    setUserRank(rank + 1);
+  }
+
+  const myEntry = allUsers?.find((u: any) => u.user_id === user.id);
+  if (myEntry) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    setCurrentUser({
+      id: user.id,
+      points: myEntry.total_points,
+      name: `${profile?.username || 'You'} (You)`,
+    });
+  }
+};
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Leaderboard</Text>
+
       <FlatList
-        data={leaderboardData}
+        data={topUsers}
         keyExtractor={(item) => item.id}
         renderItem={({ item, index }) => (
           <View style={styles.item}>
@@ -24,9 +84,21 @@ export default function Leaderboard() {
           </View>
         )}
       />
+
+ {currentUser && userRank && (
+  <>
+    <View style={{ height: 10 }} />
+    <View style={[styles.item, styles.userRow]} key="your-rank-row">
+      <Text style={styles.rank}>{userRank}.</Text>
+      <Text style={styles.name}>{currentUser.name}</Text>
+      <Text style={styles.points}>{currentUser.points} pts</Text>
+    </View>
+  </>
+)}
     </View>
   );
 }
+
 
 
 const styles = StyleSheet.create({
@@ -53,4 +125,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
+  userRow: {
+  backgroundColor: '#ffe082',
+},
 });

@@ -46,7 +46,7 @@ export default function Login() {
       const userProfile = await loginUser(username, password);
       await AsyncStorage.setItem('userInfo', JSON.stringify(userProfile));
       setMessage('Login successful!');
-      router.replace('/Dashboard/Profile');
+      router.replace('./Dashboard');
     } catch (error) {
         if (error instanceof Error) {
     setMessage(error.message);

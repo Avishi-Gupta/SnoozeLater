@@ -1,11 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Task = {
   id: string;
@@ -25,6 +24,17 @@ export default function PlannerScreen() {
   const [sleepTime, setSleepTime] = useState<Date | null>(null);
   const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
   const [repeat, setRepeat] = useState(false);
+
+//   const cancelAllNotifications = async () => {
+//   try {
+//     await Notifications.cancelAllScheduledNotificationsAsync();
+//     await AsyncStorage.removeItem('sleepNotifIds');
+//     await AsyncStorage.removeItem('wakeNotifIds');
+//     console.log('All scheduled notifications cancelled.');
+//   } catch (err) {
+//     console.error('Error cancelling notifications:', err);
+//   }
+// };
 
 
   useEffect(() => {
@@ -59,6 +69,7 @@ export default function PlannerScreen() {
 useEffect(() => {
   const saveTasks = async () => {
     await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+
     const { data, error: userError } = await supabase.auth.getUser();
 
     if (userError || !data.user) {
@@ -68,10 +79,11 @@ useEffect(() => {
 
     for (const task of tasks) {
       await supabase.from('tasks').upsert({
-        id: task.id, 
-        routine: task.routine, 
+        id: task.id,
+        routine: task.routine,
         time: task.time.toISOString(),
-        user_id: userId, 
+        user_id: userId,
+        repeat: task.repeat ?? false, 
       });
     }
   };
@@ -101,12 +113,14 @@ useEffect(() => {
       if (data.target_sleep_time) setSleepTime(new Date(data.target_sleep_time));
       if (data.target_wake_time) setWakeUpTime(new Date(data.target_wake_time));
 
-      // Schedule sleep notification and alarm
-      if (data.target_sleep_time) scheduleNotification('Sleep Time', new Date(data.target_sleep_time), true);
-      if (data.target_wake_time) scheduleAlarm(new Date(data.target_wake_time)); // ALARM
+      if (data.target_sleep_time) {
+        await scheduleSleepOrWakeNotification('Sleep', new Date(data.target_sleep_time), true);
+      }
+      if (data.target_wake_time) {
+        await scheduleSleepOrWakeNotification('Waking Up', new Date(data.target_wake_time), true);
+      }
     }
   };
-
 
   function formatTime(date: Date | null) {
 if (!date) return '--:--';
@@ -114,7 +128,7 @@ if (!date) return '--:--';
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
-
+  
   async function scheduleNotification(title: string, date: Date, repeat: boolean){
      const id = await Notifications.scheduleNotificationAsync({
       content: {
@@ -132,23 +146,46 @@ if (!date) return '--:--';
     return id;
   }
 
-async function scheduleAlarm(date: Date) {
-    const now = new Date();
-    const delay = date.getTime() - now.getTime();
-    if (delay <= 0) return;
-
-    setTimeout(() => {
-      const sound = new Audio.Sound();
-      (async () => {
-        try {
-          await sound.loadAsync(require('@/assets/alarm-clock.mp3')); 
-          await sound.playAsync();
-        } catch (error) {
-          console.error('Alarm error:', error);
-        }
-      })();
-    }, delay);
+const cancelOldNotification = async (key: string) => {
+  const stored = await AsyncStorage.getItem(key);
+  if (stored) {
+    const ids = JSON.parse(stored);
+    for (const id of ids) {
+      await Notifications.cancelScheduledNotificationAsync(id);
+    }
+    await AsyncStorage.removeItem(key);
   }
+};
+
+  async function scheduleSleepOrWakeNotification(
+  type: 'Sleep' | 'Waking Up',
+  date: Date,
+  repeat: boolean
+) {
+  const key = type === 'Sleep' ? 'sleepNotifIds' : 'wakeNotifIds';
+
+  await cancelOldNotification(key);
+
+  const id = await Notifications.scheduleNotificationAsync({
+    content: {
+      title: 'Routine Reminder',
+      body: `⏰ ${type} Time ⏰`,
+      sound: 'alarm-clock.mp3',
+      vibrate: [500, 500, 500], 
+      priority: Notifications.AndroidNotificationPriority.HIGH,
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+      hour: date.getHours(),
+      minute: date.getMinutes(),
+      repeats: repeat,
+    },
+  });
+
+  await AsyncStorage.setItem(key, JSON.stringify([id]));
+
+  return id;
+}
 
 async function handleAddTask() {
   if (routine.trim() === '') return;
@@ -197,6 +234,10 @@ const handleDeleteTask = async (taskId: string) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Plan your day here!</Text>
+      {/* <TouchableOpacity onPress={cancelAllNotifications} style={styles.addButton}>
+  <Text style={styles.buttonText}>🔁 Reset All Notifications</Text>
+</TouchableOpacity> */}
+
 
       <TextInput
         placeholder="What do you want to do?"
@@ -247,16 +288,31 @@ const handleDeleteTask = async (taskId: string) => {
       <View style={styles.timeRow}>
   <Text style={styles.timeLabel}>Sleep Time: {formatTime(sleepTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Set Sleep Time</Text>
+    <Text style={styles.buttonText}>Sleep Time</Text>
   </TouchableOpacity>
 </View>
 
 <View style={styles.timeRow}>
   <Text style={styles.timeLabel}>Wake Up Time: {formatTime(wakeUpTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Set Wake Time</Text>
+    <Text style={styles.buttonText}>Wake Time</Text>
   </TouchableOpacity>
 </View>
+
+    <TouchableOpacity
+      onPress={fetchSleepTimes}
+      style={{
+        backgroundColor: '#4e6ab0',
+        padding: 10,
+        borderRadius: 8,
+        alignSelf: 'flex-end',
+        marginBottom: 10,
+        marginTop: 5,
+      }}
+    >
+      <Text style={{ color: 'white' }}>🔄 Refresh</Text>
+    </TouchableOpacity>
+
 
 
       <FlatList
@@ -280,11 +336,27 @@ const handleDeleteTask = async (taskId: string) => {
         }
         style={styles.beginButton}
       >
-        <Text style={styles.buttonText}>Begin</Text>
+        <Text style={styles.deleteText}>Begin</Text>
       </TouchableOpacity>
 
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={async () => {
+                const task = tasks.find((t) => t.id === item.id);
+                if (!task) return;
+
+                if (!task.repeat) {
+                  await handleDeleteTask(item.id);
+                } else {
+                  Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
+                }
+              }}
+              style={styles.beginButton}
+            >
+              <Text style={styles.deleteText}>Mark Completed</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -303,7 +375,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    margin: 60,
+    margin: 30,
     color: 'white',
   },
   addButton: {
@@ -345,7 +417,7 @@ const styles = StyleSheet.create({
   },
   taskText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 14,
     flex: 1,
   },
   beginButton: {
@@ -353,18 +425,19 @@ const styles = StyleSheet.create({
   paddingVertical: 6,
   paddingHorizontal: 12,
   borderRadius: 10,
-  marginRight: 10,
+  marginRight: 5,
 },
   deleteButton: {
     backgroundColor: '#ff5c5c',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
-    marginLeft: 10,
+    marginRight: 5,
   },
   deleteText: {
     color: 'white',
     fontWeight: 'bold',
+    fontSize: 10,
   },
   pickerOverlay: {
   position: 'absolute',
