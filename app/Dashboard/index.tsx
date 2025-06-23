@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -27,107 +26,117 @@ export default function Profile() {
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadUserInfo = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('userInfo');
-
-        if (storedUser) {
-          const parsed = JSON.parse(storedUser);
-          setUser(parsed);
-          if (parsed.avatar_url) setImageUri(parsed.avatar_url);
-          return;
-        }
-
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-
-        if (!authUser) return;
-
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('id, username, email, avatar_url')
-          .eq('id', authUser.id)
-          .single();
-
-        if (error) {
-          console.error('Error fetching profile:', error.message);
-          return;
-        }
-
-        setUser(profile);
-        if (profile.avatar_url) setImageUri(profile.avatar_url);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(profile));
-
-      } catch (err) {
-        console.error('Failed to load user info:', err);
-      }
-    };
-
-    loadUserInfo();
-  }, []);
-
-  const handlePickAndUploadImage = async () => {
+  const loadUserInfo = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert('Permission required', 'Allow access to change your profile picture.');
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, avatar_url')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error.message);
         return;
       }
+      
+      const refreshedProfile = {
+        ...profile,
+        avatar_url: profile.avatar_url ? `${profile.avatar_url}?v=${Date.now()}` : undefined,
+      };
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
-      });
-
-      if (!result.canceled && result.assets.length > 0) {
-        const image = result.assets[0];
-        const userId = user?.id;
-        if (!userId) throw new Error('User not found');
-
-        const fileExt = image.uri.split('.').pop();
-        const fileName = `${userId}.${fileExt}`;
-        const filePath = `avatars/${fileName}`;
-
-        const base64 = await FileSystem.readAsStringAsync(image.uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const { error: uploadError } = await supabase.storage
-          .from('profile-pictures')
-          .upload(filePath, base64, {
-            contentType: 'image/jpeg',
-            upsert: true,
-          });
-
-        if (uploadError) {
-          console.error('Upload error:', uploadError.message);
-          Alert.alert('Upload failed', uploadError.message);
-          return;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('profile-pictures')
-          .getPublicUrl(filePath);
-
-        const publicUrl = urlData.publicUrl;
-        setImageUri(publicUrl);
-
-        const updatedProfile = { ...user, avatar_url: publicUrl };
-        setUser(updatedProfile);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(updatedProfile));
-
-        await supabase.from('profiles').upsert({
-          id: userId,
-          avatar_url: publicUrl,
-        });
-      }
+      setUser(refreshedProfile);
+      if (refreshedProfile.avatar_url) setImageUri(refreshedProfile.avatar_url);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
     } catch (err) {
-      console.error('Image upload error:', err);
-      Alert.alert('Error', 'Something went wrong while uploading.');
+      console.error('Failed to load user info:', err);
     }
   };
 
+  loadUserInfo();
+}, []);
+
+  const handlePickAndUploadImage = async () => {
+  try {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow access to your media library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const image = result.assets[0];
+    const userId = user?.id;
+    if (!userId) throw new Error('User not authenticated');
+
+    const uri = image.uri;
+    const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+
+    let contentType = 'application/octet-stream';
+    if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+    else if (ext === 'png') contentType = 'image/png';
+    else if (ext === 'gif') contentType = 'image/gif';
+
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    const fileName = `${userId}.${ext}`;
+    const filePath = fileName;
+
+    console.log('Uploading binary file to:', filePath, 'size:', uint8Array.length);
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-pictures')
+      .upload(filePath, uint8Array, {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return;
+    }
+
+    const { data: urlData } = supabase
+      .storage
+      .from('profile-pictures')
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData?.publicUrl;
+    console.log('Public URL:', publicUrl);
+    if (!publicUrl) throw new Error('Failed to get public URL');
+
+    setImageUri(`${publicUrl}?v=${Date.now()}`);
+
+    const updatedProfile = { ...user, avatar_url: publicUrl };
+    setUser(updatedProfile);
+    await AsyncStorage.setItem('userInfo', JSON.stringify(updatedProfile));
+
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        avatar_url: publicUrl,
+      });
+
+    if (dbError) throw dbError;
+
+  } catch (err) {
+    console.error('Image upload error:', err);
+    Alert.alert('Error', 'Something went wrong while uploading.');
+  }
+};
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -146,10 +155,9 @@ export default function Profile() {
 
       {user ? (
         <>
-          <Text style={styles.username}> Welcome {user.username}!</Text>
-
+          <Text style={styles.username}>Welcome {user.username}!</Text>
           <Text style={styles.email}>{user.email}</Text>
-  
+
           <View style={styles.insightsContainer}>
             <Text style={styles.sectionTitle}>Weekly Insights</Text>
             <View style={styles.placeholderCard}>
@@ -159,7 +167,9 @@ export default function Profile() {
             </View>
           </View>
 
-          <TouchableOpacity style={[styles.button, { marginBottom: 15 }]} onPress={() => router.push('/settings')}>
+          <TouchableOpacity
+            style={[styles.button, { marginBottom: 15 }]}
+            onPress={() => router.push('/settings')}>
             <Text style={styles.buttonText}>Go to Settings</Text>
           </TouchableOpacity>
 
@@ -188,7 +198,8 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#4e6ab0',
+    borderColor: '#4e6ab0', 
+  zIndex: 10, 
   },
   username: {
     fontSize: 28,

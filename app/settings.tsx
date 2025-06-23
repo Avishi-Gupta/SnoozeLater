@@ -97,9 +97,12 @@ export default function Settings() {
 
   return (
     <View style={styles.container}>
+      <Text style={styles.title}>Settings</Text>
+      <View style={{ width: '80%' }}>
           <TextInput
             style={styles.input}
             placeholder="New username"
+            placeholderTextColor="#888"
             value={newUsername}
             onChangeText={setNewUsername}
           />
@@ -111,6 +114,7 @@ export default function Settings() {
         <TextInput
         style={styles.input}
         placeholder="New password"
+        placeholderTextColor="#888"
         secureTextEntry
         value={newPassword}
         onChangeText={setNewPassword}
@@ -127,27 +131,47 @@ export default function Settings() {
                 >
                   <Text style={styles.buttonText}>Back to Home</Text>
                 </TouchableOpacity>
+          </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 60, alignItems: 'center', backgroundColor: '#816ec7' },
-  title: { fontSize: 20, marginBottom: 20, color: 'white', fontWeight: '600' },
-  subtitle: {fontSize: 16, marginBottom: 20, color: 'white'},
+  container: {
+    flex: 1,
+    paddingHorizontal: 30,
+    paddingTop: 60,
+    backgroundColor: '#816ec7',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: 18,
+    color: 'white',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
   input: {
     backgroundColor: 'white',
     width: '100%',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 12,
+    padding: 14,
+    borderRadius: 10,
     fontSize: 16,
+    marginBottom: 16,
   },
-    button: {
+  button: {
     backgroundColor: '#4e6ab0',
     paddingVertical: 14,
-    paddingHorizontal: 30,
+    width: '100%',
     borderRadius: 10,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   buttonText: {
     color: 'white',
@@ -156,7 +180,9 @@ const styles = StyleSheet.create({
   },
   message: {
     color: 'white',
+    fontSize: 15,
     marginTop: 10,
+    marginBottom: 20,
     textAlign: 'center',
   },
 });
