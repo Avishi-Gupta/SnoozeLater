@@ -287,17 +287,17 @@ const handleDeleteTask = async (taskId: string) => {
       </TouchableOpacity>
 
       <View style={styles.timeRow}>
-  <Text style={styles.timeLabel}>Sleep Time: {formatTime(sleepTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
     <Text style={styles.buttonText}>Sleep Time</Text>
   </TouchableOpacity>
+   <Text style={styles.timeLabel}>{formatTime(sleepTime)}</Text>
 </View>
 
 <View style={styles.timeRow}>
-  <Text style={styles.timeLabel}>Wake Up Time: {formatTime(wakeUpTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
     <Text style={styles.buttonText}>Wake Time</Text>
   </TouchableOpacity>
+   <Text style={styles.timeLabel}>{formatTime(wakeUpTime)}</Text>
 </View>
 
     <TouchableOpacity
@@ -490,6 +490,7 @@ timeLabel: {
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
+    marginRight: 10,
   },
   repeatButton: {
   padding: 10,
