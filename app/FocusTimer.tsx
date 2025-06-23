@@ -155,73 +155,7 @@ const playAlarm = async () => {
   }
 
   router.replace('/Dashboard/DailyPlanner');
-};
-
-
-//   const handleMarkCompleted = async () => {
-//   if (!taskId) return;
-
-//   const { data: { user } } = await supabase.auth.getUser();
-//   if (!user) return;
-
-//   const { data: taskData } = await supabase
-//     .from('tasks')
-//     .select('repeat')
-//     .eq('id', taskId)
-//     .single();
-
-//   const scheduled = new Date(taskTime as string);
-//   const now = new Date();
-//   const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
-
-//   let points = 0;
-//   if (diffMins <= 5) {
-//     points = 500;
-//   } else {
-//     points = Math.max(0, 500 - diffMins * 10);
-//   }
-
-//   const { data: existing } = await supabase
-//     .from('points')
-//     .select('total_points')
-//     .eq('user_id', user.id)
-//     .single();
-
-//   if (existing) {
-//     await supabase
-//       .from('points')
-//       .update({
-//         total_points: existing.total_points + points,
-//         updated_at: now,
-//       })
-//       .eq('user_id', user.id);
-//   } else {
-//     await supabase
-//       .from('points')
-//       .insert({
-//         user_id: user.id,
-//         total_points: points,
-//         updated_at: now,
-//       });
-//   }
-
-//   if (!taskData?.repeat) {
-//     await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', user.id);
-
-//     const stored = await AsyncStorage.getItem('tasks');
-//     if (stored) {
-//       const updated = JSON.parse(stored).filter((t: any) => t.id !== taskId);
-//       await AsyncStorage.setItem('tasks', JSON.stringify(updated));
-//     }
-//   } else {
-//     Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
-//   }
-
-//   router.replace('/Dashboard/DailyPlanner');
-// };
-
-
-  
+};  
 
   return (
     <View style={styles.container}>
