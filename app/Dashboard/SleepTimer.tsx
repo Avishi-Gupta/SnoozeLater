@@ -274,6 +274,12 @@ const awardSleepPoints = async () => {
         updated_at: now,
       });
   }
+  await supabase.from('points_log').insert({
+    user_id: user.id,
+    type: 'sleep',
+    points,
+    created_at: data.inserted_at
+  });
 
   alert(`🎉 Sleep points awarded: ${points}`);
 };

@@ -25,6 +25,7 @@ export default function Profile() {
   } | null>(null);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [avgSleepDuration, setAvgSleepDuration] = useState<number | null>(null);
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -35,6 +36,7 @@ export default function Profile() {
           const parsed = JSON.parse(storedUser);
           setUser(parsed);
           if (parsed.avatar_url) setImageUri(parsed.avatar_url);
+          await fetchWeeklySleep(parsed.id);
           return;
         }
 
@@ -56,9 +58,43 @@ export default function Profile() {
         setUser(profile);
         if (profile.avatar_url) setImageUri(profile.avatar_url);
         await AsyncStorage.setItem('userInfo', JSON.stringify(profile));
+        await fetchWeeklySleep(profile.id);
 
       } catch (err) {
         console.error('Failed to load user info:', err);
+      }
+    };
+
+    const fetchWeeklySleep = async (userId: string) => {
+      try {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+        const { data, error } = await supabase
+          .from('points_log')
+          .select('duration_slept, created_at')
+          .eq('user_id', userId)
+          .eq('type', 'sleep')
+          .gte('created_at', oneWeekAgo.toISOString());
+
+        if (error) {
+          console.error('Error fetching weekly sleep insights:', error);
+          setAvgSleepDuration(null);
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          setAvgSleepDuration(null);
+          return;
+        }
+
+        const totalDuration = data.reduce((sum, entry) => sum + (entry.duration_slept || 0), 0);
+        const avgDuration = totalDuration / data.length;
+        setAvgSleepDuration(avgDuration);
+
+      } catch (err) {
+        console.error('Unexpected error fetching weekly sleep:', err);
+        setAvgSleepDuration(null);
       }
     };
 
@@ -128,7 +164,6 @@ export default function Profile() {
     }
   };
 
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     await AsyncStorage.removeItem('userInfo');
@@ -146,16 +181,21 @@ export default function Profile() {
 
       {user ? (
         <>
-          <Text style={styles.username}> Welcome {user.username}!</Text>
-
-          <Text style={styles.email}>{user.email}</Text>
+          <Text style={styles.username}>Welcome {user.username}!</Text>
   
           <View style={styles.insightsContainer}>
-            <Text style={styles.sectionTitle}>Weekly Insights</Text>
-            <View style={styles.placeholderCard}>
-              <Text style={styles.placeholderText}>😴 Sleep: 7.2 hrs/day</Text>
-              <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text>
-              <Text style={styles.placeholderNote}>Based on your latest activity data.</Text>
+            <View style={styles.insightsCard}>
+              <View style={styles.insightRow}>
+                <Text style={styles.insightLabel}>😴 Sleep:</Text>
+                <Text style={styles.insightValue}>
+                  {avgSleepDuration !== null ? `${avgSleepDuration.toFixed(1)} hrs/day` : 'No data'}
+                </Text>
+              </View>
+              <View style={styles.insightRow}>
+                <Text style={styles.insightLabel}>📚 Study:</Text>
+                <Text style={styles.insightValue}>3.8 hrs/day</Text>
+              </View>
+              <Text style={styles.insightNote}>Based on your latest activity data.</Text>
             </View>
           </View>
 
@@ -194,12 +234,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: 'white',
-    marginBottom: 5,
-  },
-  email: {
-    fontSize: 18,
-    color: 'white',
-    marginBottom: 10,
+    marginBottom: 20,
   },
   loadingText: {
     fontSize: 18,
@@ -208,38 +243,43 @@ const styles = StyleSheet.create({
   },
   insightsContainer: {
     width: '100%',
-    marginBottom: 30,
-    alignItems: 'center',
+    marginBottom: 40,
   },
   sectionTitle: {
     fontSize: 20,
     color: 'white',
     fontWeight: '600',
     marginBottom: 10,
+    textAlign: 'center',
   },
-  placeholderCard: {
+  insightsCard: {
     backgroundColor: '#ffffff',
     padding: 16,
     borderRadius: 10,
     width: '100%',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
-    elevation: 3,
+    // left aligned content
   },
-  placeholderText: {
+  insightRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  insightLabel: {
     fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 4,
+    fontWeight: '600',
     color: '#333',
   },
-  placeholderNote: {
+  insightValue: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#555',
+  },
+  insightNote: {
     fontSize: 14,
     color: '#666',
     marginTop: 6,
     fontStyle: 'italic',
+    textAlign: 'center',
   },
   button: {
     backgroundColor: '#4e6ab0',
