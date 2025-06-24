@@ -249,7 +249,7 @@ const awardSleepPoints = async () => {
 
   const { data: existing, error: pointsError } = await supabase
     .from('points')
-    .select('total_points')
+    .select('total_points, sleep_points')
     .eq('user_id', user.id)
     .single();
 
@@ -261,7 +261,8 @@ const awardSleepPoints = async () => {
     await supabase
       .from('points')
       .update({
-        total_points: existing.total_points + points,
+        total_points: (existing.total_points || 0) + points,
+        sleep_points: (existing.sleep_points || 0) + points,
         updated_at: now,
       })
       .eq('user_id', user.id);
@@ -271,15 +272,10 @@ const awardSleepPoints = async () => {
       .insert({
         user_id: user.id,
         total_points: points,
+        sleep_points: points,
         updated_at: now,
       });
   }
-  await supabase.from('points_log').insert({
-    user_id: user.id,
-    type: 'sleep',
-    points,
-    created_at: data.inserted_at
-  });
 
   alert(`🎉 Sleep points awarded: ${points}`);
 };
@@ -358,7 +354,6 @@ const handleSaveAndAwardPoints = async () => {
       )}
 
       <View style={styles.actionButtons}>
-        {/* <Button title="Save Target Times" onPress={saveTargetTimes} color="darkblue" /> */}
         <Button title="Back" onPress={() => router.push('/Dashboard/DailyPlanner')} color="darkgrey" />
       </View>
     </View>

@@ -473,8 +473,8 @@ timeRow: {
 },
 timeLabel: {
   color: '#fff',
-  fontSize: 16,
-  marginBottom: 15,
+  fontSize: 23,
+  marginBottom: 10,
   width: '50%',
 },
 
