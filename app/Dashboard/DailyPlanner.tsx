@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 type Task = {
   id: string;
@@ -84,6 +84,7 @@ useEffect(() => {
         time: task.time.toISOString(),
         user_id: userId,
         repeat: task.repeat ?? false, 
+        notif_id: task.notifId ?? null,
       });
     }
   };
@@ -286,17 +287,17 @@ const handleDeleteTask = async (taskId: string) => {
       </TouchableOpacity>
 
       <View style={styles.timeRow}>
-  <Text style={styles.timeLabel}>Sleep Time: {formatTime(sleepTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
     <Text style={styles.buttonText}>Sleep Time</Text>
   </TouchableOpacity>
+   <Text style={styles.timeLabel}>{formatTime(sleepTime)}</Text>
 </View>
 
 <View style={styles.timeRow}>
-  <Text style={styles.timeLabel}>Wake Up Time: {formatTime(wakeUpTime)}</Text>
   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
     <Text style={styles.buttonText}>Wake Time</Text>
   </TouchableOpacity>
+   <Text style={styles.timeLabel}>{formatTime(wakeUpTime)}</Text>
 </View>
 
     <TouchableOpacity
@@ -343,7 +344,7 @@ const handleDeleteTask = async (taskId: string) => {
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={async () => {
                 const task = tasks.find((t) => t.id === item.id);
                 if (!task) return;
@@ -357,7 +358,7 @@ const handleDeleteTask = async (taskId: string) => {
               style={styles.beginButton}
             >
               <Text style={styles.deleteText}>Mark Completed</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         )}
         style={{ marginTop: 20, width: '100%' }}
@@ -489,6 +490,7 @@ timeLabel: {
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
+    marginRight: 10,
   },
   repeatButton: {
   padding: 10,

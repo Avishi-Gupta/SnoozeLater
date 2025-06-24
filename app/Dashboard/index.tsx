@@ -1,0 +1,266 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+
+import DefaultProfileImage from '../../assets/images/blank-profile-picture-973460_1280.png';
+import { supabase } from '../../lib/supabase';
+
+export default function Profile() {
+  const router = useRouter();
+  const [user, setUser] = useState<{
+    id: string;
+    username: string;
+    email: string;
+    avatar_url?: string;
+  } | null>(null);
+
+  const [imageUri, setImageUri] = useState<string | null>(null);
+
+  useEffect(() => {
+  const loadUserInfo = async () => {
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) return;
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, avatar_url')
+        .eq('id', authUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error.message);
+        return;
+      }
+      
+      const refreshedProfile = {
+        ...profile,
+        avatar_url: profile.avatar_url ? `${profile.avatar_url}?v=${Date.now()}` : undefined,
+      };
+
+      setUser(refreshedProfile);
+      if (refreshedProfile.avatar_url) setImageUri(refreshedProfile.avatar_url);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
+    } catch (err) {
+      console.error('Failed to load user info:', err);
+    }
+  };
+
+  loadUserInfo();
+}, []);
+
+  const handlePickAndUploadImage = async () => {
+  try {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow access to your media library.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    const image = result.assets[0];
+    const userId = user?.id;
+    if (!userId) throw new Error('User not authenticated');
+
+    const uri = image.uri;
+    const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+
+    let contentType = 'application/octet-stream';
+    if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+    else if (ext === 'png') contentType = 'image/png';
+    else if (ext === 'gif') contentType = 'image/gif';
+
+    const response = await fetch(uri);
+    const arrayBuffer = await response.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+
+    const fileName = `${userId}.${ext}`;
+    const filePath = fileName;
+
+    console.log('Uploading binary file to:', filePath, 'size:', uint8Array.length);
+
+    const { error: uploadError } = await supabase.storage
+      .from('profile-pictures')
+      .upload(filePath, uint8Array, {
+        contentType,
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return;
+    }
+
+    const { data: urlData } = supabase
+      .storage
+      .from('profile-pictures')
+      .getPublicUrl(filePath);
+
+    const publicUrl = urlData?.publicUrl;
+    console.log('Public URL:', publicUrl);
+    if (!publicUrl) throw new Error('Failed to get public URL');
+
+    setImageUri(`${publicUrl}?v=${Date.now()}`);
+
+    const updatedProfile = { ...user, avatar_url: publicUrl };
+    setUser(updatedProfile);
+    await AsyncStorage.setItem('userInfo', JSON.stringify(updatedProfile));
+
+    const { error: dbError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: userId,
+        avatar_url: publicUrl,
+      });
+
+    if (dbError) throw dbError;
+
+  } catch (err) {
+    console.error('Image upload error:', err);
+    Alert.alert('Error', 'Something went wrong while uploading.');
+  }
+};
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    await AsyncStorage.removeItem('userInfo');
+    router.replace('/login');
+  };
+
+  return (
+    <View style={styles.container}>
+      <TouchableOpacity onPress={handlePickAndUploadImage}>
+        <Image
+          source={imageUri ? { uri: imageUri } : DefaultProfileImage}
+          style={styles.profileImage}
+        />
+      </TouchableOpacity>
+
+      {user ? (
+        <>
+          <Text style={styles.username}>Welcome {user.username}!</Text>
+          <Text style={styles.email}>{user.email}</Text>
+
+          <View style={styles.insightsContainer}>
+            <Text style={styles.sectionTitle}>Weekly Insights</Text>
+            <View style={styles.placeholderCard}>
+              <Text style={styles.placeholderText}>😴 Sleep: 7.2 hrs/day</Text>
+              <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text>
+              <Text style={styles.placeholderNote}>Based on your latest activity data.</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.button, { marginBottom: 15 }]}
+            onPress={() => router.push('/settings')}>
+            <Text style={styles.buttonText}>Go to Settings</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.button} onPress={handleLogout}>
+            <Text style={styles.buttonText}>Logout</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <Text style={styles.loadingText}>Loading profile...</Text>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#816ec7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  profileImage: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#4e6ab0', 
+  zIndex: 10, 
+  },
+  username: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 5,
+  },
+  email: {
+    fontSize: 18,
+    color: 'white',
+    marginBottom: 10,
+  },
+  loadingText: {
+    fontSize: 18,
+    color: 'white',
+    marginBottom: 30,
+  },
+  insightsContainer: {
+    width: '100%',
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    color: 'white',
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  placeholderCard: {
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
+  placeholderText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#333',
+  },
+  placeholderNote: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
+  button: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
