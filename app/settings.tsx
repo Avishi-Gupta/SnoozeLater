@@ -2,7 +2,15 @@ import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity
+} from 'react-native';
 
 export const updateUserProfile = async (newUsername: string) => {
   const {
@@ -39,13 +47,12 @@ export default function Settings() {
           setUser(JSON.parse(userData));
         }
       } catch (error) {
-        console.error("Failed to load user data", error);
+        console.error('Failed to load user data', error);
       }
     };
 
     fetchUserData();
   }, []);
-
 
   const handleUpdateUsername = async () => {
     if (!newUsername.trim()) {
@@ -61,18 +68,12 @@ export default function Settings() {
       };
       setUser(updatedUser);
       await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
-      setMessage('Username updated successfully!');
+      setMessage('✅ Username updated successfully!');
       setNewUsername('');
     } catch (error) {
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('An unexpected error occurred.');
-      }
+      setMessage(error instanceof Error ? error.message : 'An unexpected error occurred.');
     }
   };
-
-
 
   const handleUpdatePassword = async () => {
     if (!newPassword.trim()) {
@@ -84,94 +85,95 @@ export default function Settings() {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      setMessage('Password updated successfully!');
+      setMessage('✅ Password updated successfully!');
       setNewPassword('');
     } catch (error) {
-      if (error instanceof Error) {
-        setMessage(error.message);
-      } else {
-        setMessage('Unexpected error updating password.');
-      }
+      setMessage(error instanceof Error ? error.message : 'Unexpected error updating password.');
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      <View style={{ width: '80%' }}>
-          <TextInput
-            style={styles.input}
-            placeholder="New username"
-            placeholderTextColor="#888"
-            value={newUsername}
-            onChangeText={setNewUsername}
-          />
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <Text style={styles.header}>⚙️ Settings</Text>
 
-          <TouchableOpacity style={styles.button} onPress={handleUpdateUsername}>
-            <Text style={styles.buttonText}>Update Username</Text>
-          </TouchableOpacity>
-
+        <Text style={styles.label}>Change Username</Text>
         <TextInput
-        style={styles.input}
-        placeholder="New password"
-        placeholderTextColor="#888"
-        secureTextEntry
-        value={newPassword}
-        onChangeText={setNewPassword}
+          style={styles.input}
+          placeholder="Enter new username"
+          value={newUsername}
+          onChangeText={setNewUsername}
+        />
+        <TouchableOpacity style={styles.button} onPress={handleUpdateUsername}>
+          <Text style={styles.buttonText}>Update Username</Text>
+        </TouchableOpacity>
+
+        <Text style={[styles.label, { marginTop: 24 }]}>Change Password</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter new password"
+          secureTextEntry
+          value={newPassword}
+          onChangeText={setNewPassword}
         />
         <TouchableOpacity style={styles.button} onPress={handleUpdatePassword}>
           <Text style={styles.buttonText}>Update Password</Text>
-          </TouchableOpacity>
+        </TouchableOpacity>
 
-          <Text style={styles.message}>{message}</Text>
+        {message !== '' && <Text style={styles.message}>{message}</Text>}
 
-                <TouchableOpacity
-                  style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
-                  onPress={() => router.replace('./Dashboard')}
-                >
-                  <Text style={styles.buttonText}>Back to Home</Text>
-                </TouchableOpacity>
-          </View>
-    </View>
+        <TouchableOpacity
+          style={[styles.button, { marginTop: 40, backgroundColor: '#4e6ab0' }]}
+          onPress={() => router.replace('/Dashboard')}
+        >
+          <Text style={styles.buttonText}>⬅ Back to Home</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 60,
     backgroundColor: '#816ec7',
+  },
+  scroll: {
+    padding: 24,
+    paddingTop: 60,
     alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
+  header: {
+    fontSize: 26,
+    fontWeight: 'bold',
     color: 'white',
-    marginBottom: 20,
-    textAlign: 'center',
+    marginBottom: 30,
   },
-  subtitle: {
-    fontSize: 18,
+  label: {
     color: 'white',
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+    marginTop: 16,
   },
   input: {
-    backgroundColor: 'white',
+    backgroundColor: '#fff',
     width: '100%',
-    padding: 14,
+    padding: 12,
     borderRadius: 10,
     fontSize: 16,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   button: {
-    backgroundColor: '#4e6ab0',
+    backgroundColor: '#5a75d3',
     paddingVertical: 14,
     width: '100%',
     borderRadius: 10,
+    marginTop: 4,
     alignItems: 'center',
-    marginBottom: 16,
   },
   buttonText: {
     color: 'white',
@@ -179,10 +181,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   message: {
-    color: 'white',
-    fontSize: 15,
-    marginTop: 10,
-    marginBottom: 20,
+    marginTop: 16,
+    color: '#fff',
+    fontStyle: 'italic',
     textAlign: 'center',
   },
 });
