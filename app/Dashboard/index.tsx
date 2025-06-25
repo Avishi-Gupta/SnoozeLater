@@ -24,119 +24,142 @@ export default function Profile() {
   } | null>(null);
 
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [avgSleep, setAvgSleep] = useState<number | null>(null);
 
   useEffect(() => {
-  const loadUserInfo = async () => {
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
+    const loadUserInfo = async () => {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) return;
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('id, username, email, avatar_url')
-        .eq('id', authUser.id)
-        .single();
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('id, username, email, avatar_url')
+          .eq('id', authUser.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching profile:', error.message);
+          return;
+        }
+
+        const refreshedProfile = {
+          ...profile,
+          avatar_url: profile.avatar_url ? `${profile.avatar_url}?v=${Date.now()}` : undefined,
+        };
+
+        setUser(refreshedProfile);
+        if (refreshedProfile.avatar_url) setImageUri(refreshedProfile.avatar_url);
+        await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
+
+        await fetchAverageSleep(refreshedProfile.id);
+      } catch (err) {
+        console.error('Failed to load user info:', err);
+      }
+    };
+
+    const fetchAverageSleep = async (userId: string) => {
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(endDate.getDate() - 6);
+
+      const { data, error } = await supabase
+        .from('points_log')
+        .select('duration_slept')
+        .eq('user_id', userId)
+        .eq('type', 'sleep')
+        .gte('created_at', startDate.toISOString());
 
       if (error) {
-        console.error('Error fetching profile:', error.message);
+        console.error('Error fetching sleep data:', error.message);
         return;
       }
-      
-      const refreshedProfile = {
-        ...profile,
-        avatar_url: profile.avatar_url ? `${profile.avatar_url}?v=${Date.now()}` : undefined,
-      };
 
-      setUser(refreshedProfile);
-      if (refreshedProfile.avatar_url) setImageUri(refreshedProfile.avatar_url);
-      await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
-    } catch (err) {
-      console.error('Failed to load user info:', err);
-    }
-  };
+      if (data && data.length > 0) {
+        const total = data.reduce((sum, row) => sum + (row.duration_slept || 0), 0);
+        setAvgSleep(total / data.length);
+      } else {
+        setAvgSleep(null);
+      }
+    };
 
-  loadUserInfo();
-}, []);
+    loadUserInfo();
+  }, []);
 
   const handlePickAndUploadImage = async () => {
-  try {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission required', 'Please allow access to your media library.');
-      return;
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please allow access to your media library.');
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-
-    if (result.canceled || !result.assets?.[0]) return;
-
-    const image = result.assets[0];
-    const userId = user?.id;
-    if (!userId) throw new Error('User not authenticated');
-
-    const uri = image.uri;
-    const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
-
-    let contentType = 'application/octet-stream';
-    if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
-    else if (ext === 'png') contentType = 'image/png';
-    else if (ext === 'gif') contentType = 'image/gif';
-
-    const response = await fetch(uri);
-    const arrayBuffer = await response.arrayBuffer();
-    const uint8Array = new Uint8Array(arrayBuffer);
-
-    const fileName = `${userId}.${ext}`;
-    const filePath = fileName;
-
-    console.log('Uploading binary file to:', filePath, 'size:', uint8Array.length);
-
-    const { error: uploadError } = await supabase.storage
-      .from('profile-pictures')
-      .upload(filePath, uint8Array, {
-        contentType,
-        upsert: true,
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
       });
 
-    if (uploadError) {
-      console.error('Upload error:', uploadError);
-      return;
+      if (result.canceled || !result.assets?.[0]) return;
+
+      const image = result.assets[0];
+      const userId = user?.id;
+      if (!userId) throw new Error('User not authenticated');
+
+      const uri = image.uri;
+      const ext = uri.split('.').pop()?.toLowerCase() || 'jpg';
+
+      let contentType = 'application/octet-stream';
+      if (ext === 'jpg' || ext === 'jpeg') contentType = 'image/jpeg';
+      else if (ext === 'png') contentType = 'image/png';
+      else if (ext === 'gif') contentType = 'image/gif';
+
+      const response = await fetch(uri);
+      const arrayBuffer = await response.arrayBuffer();
+      const uint8Array = new Uint8Array(arrayBuffer);
+
+      const fileName = `${userId}.${ext}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(filePath, uint8Array, {
+          contentType,
+          upsert: true,
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(filePath);
+
+      const publicUrl = urlData?.publicUrl;
+      if (!publicUrl) throw new Error('Failed to get public URL');
+
+      setImageUri(`${publicUrl}?v=${Date.now()}`);
+
+      const updatedProfile = { ...user, avatar_url: publicUrl };
+      setUser(updatedProfile);
+      await AsyncStorage.setItem('userInfo', JSON.stringify(updatedProfile));
+
+      const { error: dbError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: userId,
+          avatar_url: publicUrl,
+        });
+
+      if (dbError) throw dbError;
+    } catch (err) {
+      console.error('Image upload error:', err);
+      Alert.alert('Error', 'Something went wrong while uploading.');
     }
-
-    const { data: urlData } = supabase
-      .storage
-      .from('profile-pictures')
-      .getPublicUrl(filePath);
-
-    const publicUrl = urlData?.publicUrl;
-    console.log('Public URL:', publicUrl);
-    if (!publicUrl) throw new Error('Failed to get public URL');
-
-    setImageUri(`${publicUrl}?v=${Date.now()}`);
-
-    const updatedProfile = { ...user, avatar_url: publicUrl };
-    setUser(updatedProfile);
-    await AsyncStorage.setItem('userInfo', JSON.stringify(updatedProfile));
-
-    const { error: dbError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        avatar_url: publicUrl,
-      });
-
-    if (dbError) throw dbError;
-
-  } catch (err) {
-    console.error('Image upload error:', err);
-    Alert.alert('Error', 'Something went wrong while uploading.');
-  }
-};
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -161,7 +184,9 @@ export default function Profile() {
           <View style={styles.insightsContainer}>
             <Text style={styles.sectionTitle}>Weekly Insights</Text>
             <View style={styles.placeholderCard}>
-              <Text style={styles.placeholderText}>😴 Sleep: 7.2 hrs/day</Text>
+              <Text style={styles.placeholderText}>
+                😴 Sleep: {avgSleep !== null ? `${avgSleep.toFixed(2)} hrs/day` : 'No data yet'}
+              </Text>
               <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text>
               <Text style={styles.placeholderNote}>Based on your latest activity data.</Text>
             </View>
@@ -198,8 +223,7 @@ const styles = StyleSheet.create({
     borderRadius: 70,
     marginBottom: 20,
     borderWidth: 2,
-    borderColor: '#4e6ab0', 
-  zIndex: 10, 
+    borderColor: '#4e6ab0',
   },
   username: {
     fontSize: 28,
