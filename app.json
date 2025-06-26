@@ -10,16 +10,26 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-       "infoPlist": {
+      "infoPlist": {
         "NSMicrophoneUsageDescription": "This app uses audio for alarms.",
         "NSAudioUsageDescription": "This app plays alarm sounds to notify you when the timer ends.",
-        "UIBackgroundModes": ["audio", "fetch"]
+        "UIBackgroundModes": [
+          "audio",
+          "fetch",
+          "audio",
+          "fetch"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       },
       "permissions": [
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
+        "MEDIA_LIBRARY",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
         "MEDIA_LIBRARY"
-      ]
+      ],
+      "bundleIdentifier": "com.avishigupta.SnoozeLater"
     },
     "android": {
       "adaptiveIcon": {
@@ -27,7 +37,9 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": ["NOTIFICATIONS"]
+      "permissions": [
+        "NOTIFICATIONS"
+      ]
     },
     "web": {
       "bundler": "metro",
