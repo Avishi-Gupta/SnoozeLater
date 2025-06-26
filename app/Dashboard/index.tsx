@@ -210,7 +210,7 @@ export default function Profile() {
               <Text style={styles.placeholderText}>
                 😴 Sleep: {avgSleep !== null ? `${avgSleep.toFixed(2)} hrs/day` : 'No data yet'}
               </Text>
-              <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text>
+              {/* <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text> */}
               <Text style={styles.placeholderNote}>Based on your latest activity data.</Text>
             </View>
           </View>

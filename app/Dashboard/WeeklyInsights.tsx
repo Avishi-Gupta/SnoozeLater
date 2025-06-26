@@ -55,8 +55,10 @@ export default function WeeklyInsights() {
     const totalSleep = data.reduce((sum, item) => sum + item.duration_slept, 0);
     const average = totalSleep / data.length;
     setAverageSleep(average);
-
-    if (average >= 8) {
+    
+    if (average >= 10) {
+      setSuggestion('You might be oversleeping. Aim for 7-9 hours per night for optimal health.');
+    } else if (average >= 8) {
       setSuggestion('Great job! You’re getting enough rest. Keep it up!');
     } else if (average >= 6) {
       setSuggestion('You’re doing okay, but try to get a bit more sleep.');

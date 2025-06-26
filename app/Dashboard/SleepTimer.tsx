@@ -95,8 +95,8 @@ const stopTimer = async () => {
   await AsyncStorage.removeItem('sleepStart');
 };
 
-  const resetTimer = () => {
-    stopTimer();
+  const resetTimer = async () => {
+    await stopTimer();
     setSeconds(0);
     setSleepStart(null);
     setSleepEnd(null);
@@ -281,8 +281,14 @@ const awardSleepPoints = async () => {
 };
 
 const handleSaveAndAwardPoints = async () => {
+  if (seconds === 0) {
+    alert("You haven't tracked any sleep time yet!");
+    return;
+  }
+
   await saveSleepData();       
-  await awardSleepPoints();     
+  await awardSleepPoints();
+  resetTimer();    
 };
 
   return (
