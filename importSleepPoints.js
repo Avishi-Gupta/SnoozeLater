@@ -67,23 +67,58 @@ async function importSleepPoints() {
 
         points = Math.max(0, points);
 
-        const { error: insertError } = await supabase.from('points_log').insert({
-          user_id: user.id,
-          type: 'sleep',
-          points,
-          duration_slept: sleepDurationHrs,  // <--- added this here
-          created_at: row.inserted_at,
-        });
+        const { data: existingPointsData, error: existingPointsError } = await supabase
+          .from('points')
+          .select('sleep_points, task_points, total_points')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error('Failed to insert points_log for user', user.id, insertError);
+        if (existingPointsError) {
+          console.error(`Failed to fetch points row for user ${user.id}:`, existingPointsError);
+          continue;
+        }
+
+        if (existingPointsData) {
+          const newSleepPoints = (existingPointsData.sleep_points || 0) + points;
+          const newTotalPoints = (existingPointsData.task_points || 0) + newSleepPoints;
+
+          const { error: updateError } = await supabase
+            .from('points')
+            .update({
+              sleep_points: newSleepPoints,
+              total_points: newTotalPoints,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.id);
+
+          if (updateError) {
+            console.error(`Failed to update points for user ${user.id}:`, updateError);
+          } else {
+            console.log(`✅ Updated points for user ${user.id} with +${points} sleep points.`);
+          }
+
         } else {
-          console.log('Inserted points_log for user:', user.id, 'points:', points, 'duration_slept:', sleepDurationHrs);
+          // Insert new row
+          const { error: insertError } = await supabase
+            .from('points')
+            .insert({
+              user_id: user.id,
+              sleep_points: points,
+              task_points: 0,
+              total_points: points,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (insertError) {
+            console.error(`Failed to insert new points row for user ${user.id}:`, insertError);
+          } else {
+            console.log(`✅ Inserted new points for user ${user.id} with ${points} sleep points.`);
+          }
         }
       }
     }
 
-    console.log('✅ Import completed!');
+    console.log('🎉 All sleep points imported successfully!');
   } catch (e) {
     console.error('Unexpected error:', e);
   }

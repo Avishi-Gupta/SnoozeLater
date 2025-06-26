@@ -25,6 +25,7 @@ export default function Profile() {
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [avgSleep, setAvgSleep] = useState<number | null>(null);
+  const [totalPoints, setTotalPoints] = useState<number | null>(null);
 
   useEffect(() => {
     const loadUserInfo = async () => {
@@ -53,6 +54,7 @@ export default function Profile() {
         await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
 
         await fetchAverageSleep(refreshedProfile.id);
+        await fetchTotalPoints(refreshedProfile.id);
       } catch (err) {
         console.error('Failed to load user info:', err);
       }
@@ -64,11 +66,10 @@ export default function Profile() {
       startDate.setDate(endDate.getDate() - 6);
 
       const { data, error } = await supabase
-        .from('points_log')
-        .select('duration_slept')
-        .eq('user_id', userId)
-        .eq('type', 'sleep')
-        .gte('created_at', startDate.toISOString());
+      .from('sleep_data')
+      .select('duration_slept')
+      .eq('user_id', userId)
+      .gte('inserted_at', startDate.toISOString());
 
       if (error) {
         console.error('Error fetching sleep data:', error.message);
@@ -80,6 +81,25 @@ export default function Profile() {
         setAvgSleep(total / data.length);
       } else {
         setAvgSleep(null);
+      }
+    };
+
+    const fetchTotalPoints = async (userId: string) => {
+      const { data, error } = await supabase
+        .from('points')
+        .select('total_points')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching total points:', error.message);
+        return;
+      }
+
+      if (data && data.total_points !== undefined) {
+        setTotalPoints(data.total_points);
+      } else {
+        setTotalPoints(null);
       }
     };
 
@@ -184,6 +204,9 @@ export default function Profile() {
           <View style={styles.insightsContainer}>
             <Text style={styles.sectionTitle}>Weekly Insights</Text>
             <View style={styles.placeholderCard}>
+              <Text style={styles.placeholderText}>
+                ⭐ Total Points: {totalPoints !== null ? totalPoints : 'No data yet'}
+              </Text>
               <Text style={styles.placeholderText}>
                 😴 Sleep: {avgSleep !== null ? `${avgSleep.toFixed(2)} hrs/day` : 'No data yet'}
               </Text>
