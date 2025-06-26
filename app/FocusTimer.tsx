@@ -2,6 +2,7 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
+import { useKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -15,6 +16,7 @@ import {
 } from 'react-native';
 
 export default function FocusTimer() {
+  useKeepAwake();
   const router = useRouter();
 
   const [inputMinutes, setInputMinutes] = useState('25'); // default 25 mins as string
@@ -119,31 +121,33 @@ const playAlarm = async () => {
 
   let points = diffMins <= 5 ? 500 : Math.max(0, 500 - diffMins * 10);
 
-const { data: existing } = await supabase
-  .from('points')
-  .select('total_points, task_points')
-  .eq('user_id', user.id)
-  .single();
+  const { data: existing } = await supabase
+    .from('points')
+    .select('total_points, task_points')
+    .eq('user_id', user.id)
+    .single();
 
-if (existing) {
-  await supabase
-    .from('points')
-    .update({
-      total_points: (existing.total_points || 0) + points,
-      sleep_points: (existing.task_points || 0) + points,
-      updated_at: now,
-    })
-    .eq('user_id', user.id);
-} else {
-  await supabase
-    .from('points')
-    .insert({
-      user_id: user.id,
-      total_points: points,
-      task_points: points,
-      updated_at: now,
-    });
-}
+  if (existing) {
+    await supabase
+      .from('points')
+      .update({
+        total_points: (existing.total_points || 0) + points,
+        sleep_points: (existing.task_points || 0) + points,
+        updated_at: now,
+      })
+      .eq('user_id', user.id);
+  } else {
+    await supabase
+      .from('points')
+      .insert({
+        user_id: user.id,
+        total_points: points,
+        task_points: points,
+        updated_at: now,
+      });
+  }
+
+  Alert.alert('Task Completed', `You earned ${points} points!`);
 
 
   if (!taskData?.repeat) {
