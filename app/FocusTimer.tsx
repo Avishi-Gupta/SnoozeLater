@@ -132,7 +132,7 @@ const playAlarm = async () => {
       .from('points')
       .update({
         total_points: (existing.total_points || 0) + points,
-        sleep_points: (existing.task_points || 0) + points,
+        task_points: (existing.task_points || 0) + points,
         updated_at: now,
       })
       .eq('user_id', user.id);
