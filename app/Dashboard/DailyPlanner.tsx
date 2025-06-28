@@ -25,16 +25,16 @@ export default function PlannerScreen() {
   const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
   const [repeat, setRepeat] = useState(false);
 
-//   const cancelAllNotifications = async () => {
-//   try {
-//     await Notifications.cancelAllScheduledNotificationsAsync();
-//     await AsyncStorage.removeItem('sleepNotifIds');
-//     await AsyncStorage.removeItem('wakeNotifIds');
-//     console.log('All scheduled notifications cancelled.');
-//   } catch (err) {
-//     console.error('Error cancelling notifications:', err);
-//   }
-// };
+  const cancelAllNotifications = async () => {
+  try {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await AsyncStorage.removeItem('sleepNotifIds');
+    await AsyncStorage.removeItem('wakeNotifIds');
+    console.log('All scheduled notifications cancelled.');
+  } catch (err) {
+    console.error('Error cancelling notifications:', err);
+  }
+};
 
 
   useEffect(() => {
@@ -53,6 +53,7 @@ export default function PlannerScreen() {
       const fixedTasks = data.map((task: any) => ({
         ...task,
         time: new Date(task.time),
+        notifId: task.notif_id,
       }));
       setTasks(fixedTasks);
       await AsyncStorage.setItem('tasks', JSON.stringify(fixedTasks)); 
@@ -76,7 +77,7 @@ useEffect(() => {
       return;
     }
     const userId = data.user.id;
-
+    
     for (const task of tasks) {
       await supabase.from('tasks').upsert({
         id: task.id,
@@ -84,7 +85,7 @@ useEffect(() => {
         time: task.time.toISOString(),
         user_id: userId,
         repeat: task.repeat ?? false, 
-        notif_id: task.notifId ?? null,
+        ...(task.notifId !== undefined && { notif_id: task.notifId }),
       });
     }
   };
@@ -235,10 +236,6 @@ const handleDeleteTask = async (taskId: string) => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Plan your day here!</Text>
-      {/* <TouchableOpacity onPress={cancelAllNotifications} style={styles.addButton}>
-  <Text style={styles.buttonText}>🔁 Reset All Notifications</Text>
-</TouchableOpacity> */}
-
 
       <TextInput
         placeholder="What do you want to do?"
@@ -313,8 +310,9 @@ const handleDeleteTask = async (taskId: string) => {
     >
       <Text style={{ color: 'white' }}>🔄 Refresh</Text>
     </TouchableOpacity>
-
-
+          <TouchableOpacity onPress={cancelAllNotifications}>
+  <Text>🔁 Reset All Notifications</Text>
+</TouchableOpacity>
 
       <FlatList
         data={tasks}
@@ -343,22 +341,6 @@ const handleDeleteTask = async (taskId: string) => {
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
-
-            {/* <TouchableOpacity
-              onPress={async () => {
-                const task = tasks.find((t) => t.id === item.id);
-                if (!task) return;
-
-                if (!task.repeat) {
-                  await handleDeleteTask(item.id);
-                } else {
-                  Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
-                }
-              }}
-              style={styles.beginButton}
-            >
-              <Text style={styles.deleteText}>Mark Completed</Text>
-            </TouchableOpacity> */}
           </View>
         )}
         style={{ marginTop: 20, width: '100%' }}
