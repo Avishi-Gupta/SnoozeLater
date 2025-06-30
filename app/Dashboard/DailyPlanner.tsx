@@ -192,14 +192,30 @@ const cancelOldNotification = async (key: string) => {
 async function handleAddTask() {
   if (routine.trim() === '') return;
 
-  const notifId = await scheduleNotification(routine, selectedTime, repeat);
+
+  let notifId: string | null = null;
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+
+    if (status !== 'granted') {
+      const req = await Notifications.requestPermissionsAsync();
+      if (req.status !== 'granted') {
+        console.warn('Notification permissions not granted.');
+      }
+    }
+
+    notifId = await scheduleNotification(routine, selectedTime, repeat);
+  } catch (err) {
+    console.error('Notification scheduling failed:', err);
+  }
 
   const newTask: Task = {
     id: String(Date.now()),
     routine,
     time: selectedTime,
     repeat,
-    notifId,
+    notifId: notifId ?? undefined, 
   };
 
   const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
