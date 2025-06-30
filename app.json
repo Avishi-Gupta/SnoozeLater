@@ -39,7 +39,8 @@
       "edgeToEdgeEnabled": true,
       "permissions": [
         "NOTIFICATIONS"
-      ]
+      ],
+      "package": "com.avishigupta.SnoozeLater"
     },
     "web": {
       "bundler": "metro",
