@@ -654,12 +654,23 @@ const handleMarkCompleted = async () => {
         </View>
       )}
 
+   {isPaused && (
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
         onPress={() => router.replace('/Dashboard/DailyPlanner')}
       >
         <Text style={styles.buttonText}>Back to Planner</Text>
       </TouchableOpacity>
+      )}
+      
+      {!isRunning && (
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
+        onPress={() => router.replace('/Dashboard/DailyPlanner')}
+      >
+        <Text style={styles.buttonText}>Back to Planner</Text>
+      </TouchableOpacity>
+      )}
     </View>
   );
 }
