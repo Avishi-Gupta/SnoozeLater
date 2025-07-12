@@ -1,8 +1,9 @@
 import SleepBarChart from '@/components/SleepBarChart';
 import { supabase } from '@/lib/supabase';
 import { endOfWeek, startOfWeek } from 'date-fns';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type SleepData = {
   sleep_time: string;
@@ -97,6 +98,20 @@ export default function WeeklyInsights() {
       <View style={styles.suggestionBox}>
         <Text style={styles.suggestionText}>{suggestion}</Text>
       </View>
+
+         <TouchableOpacity
+        onPress={() => router.push('../TaskInsights')}
+        style={{
+          marginTop: 30,
+          backgroundColor: '#4e6ab0',
+          padding: 12,
+          borderRadius: 10,
+        }}
+      >
+        <Text style={{ color: 'white', fontSize: 16, textAlign: 'center' }}>
+          View Task Insights →
+        </Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }

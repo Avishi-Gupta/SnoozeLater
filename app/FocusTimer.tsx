@@ -270,12 +270,38 @@ export default function FocusTimer() {
 
 useEffect(() => {
   const restoreTimer = async () => {
+        const storedTaskId = await AsyncStorage.getItem('pausedTaskId');
+
+    if (storedTaskId && storedTaskId !== (Array.isArray(taskId) ? taskId[0] : taskId)) {
+      // Clear all previous timer-related storage if switching tasks
+      await AsyncStorage.multiRemove([
+        'focusStart',
+        'focusDuration',
+        'pausedTaskId',
+        'pauseTime',
+        'remainingAtPause'
+      ]);
+      return;
+    }
+
     const storedStart = await AsyncStorage.getItem('focusStart');
     const storedDuration = await AsyncStorage.getItem('focusDuration');
+    const paused = await AsyncStorage.getItem('focusPaused');
+    const pausedAt = await AsyncStorage.getItem('focusPausedAt');
+    const pausedRemaining = await AsyncStorage.getItem('focusRemainingAtPause');
 
     if (storedStart && storedDuration) {
       const start = new Date(storedStart);
       const duration = parseInt(storedDuration, 10);
+
+      if (paused === 'true' && pausedRemaining) {
+        setFocusDuration(duration);
+        setSecondsLeft(parseInt(pausedRemaining));
+        setStartTime(start);
+        setIsPaused(true);
+        setIsRunning(true);
+        return;
+      }
 
       const now = new Date();
       const elapsed = Math.floor((now.getTime() - start.getTime()) / 1000);
@@ -286,8 +312,13 @@ useEffect(() => {
         setIsRunning(false);
         setEndOptions(true);
         playAlarm();
-        await AsyncStorage.removeItem('focusStart');
-        await AsyncStorage.removeItem('focusDuration');
+        await AsyncStorage.multiRemove([
+          'focusStart',
+          'focusDuration',
+          'focusPaused',
+          'focusPausedAt',
+          'focusRemainingAtPause',
+        ]);
         return;
       }
 
@@ -312,8 +343,13 @@ useEffect(() => {
 
       if (remaining <= 0) {
         clearInterval(timerRef.current!);
-        await AsyncStorage.removeItem('focusStart');
-        await AsyncStorage.removeItem('focusDuration');
+        await AsyncStorage.multiRemove([
+          'focusStart',
+          'focusDuration',
+          'focusPaused',
+          'focusPausedAt',
+          'focusRemainingAtPause',
+        ]);
         setIsRunning(false);
         setEndOptions(true);
         playAlarm();
@@ -325,7 +361,6 @@ useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
   };
 }, [isRunning, isPaused, startTime, focusDuration]);
-
 
 useEffect(() => {
   const loadSound = async () => {
@@ -401,6 +436,12 @@ const handlePauseResume = async () => {
     setPauseTime(now);
     setRemainingAtPause(secondsLeft);
     setIsPaused(true);
+
+    await AsyncStorage.setItem('focusPaused', 'true');
+    await AsyncStorage.setItem('focusPausedAt', now.toISOString());
+    await AsyncStorage.setItem('focusRemainingAtPause', secondsLeft.toString());
+    await AsyncStorage.setItem('pausedTaskId', Array.isArray(taskId) ? taskId[0] : taskId ?? '');
+
     await Notifications.cancelAllScheduledNotificationsAsync();
   } else {
     const now = new Date();
@@ -412,6 +453,10 @@ const handlePauseResume = async () => {
     setRemainingAtPause(null);
 
     await AsyncStorage.setItem('focusStart', newStart.toISOString());
+    await AsyncStorage.removeItem('focusPaused');
+    await AsyncStorage.removeItem('focusPausedAt');
+    await AsyncStorage.removeItem('focusRemainingAtPause');
+
 
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -436,8 +481,14 @@ const handleReset = async () => {
   setPauseTime(null);
   setRemainingAtPause(null);
   setSecondsLeft(0);
-  await AsyncStorage.removeItem('focusStart');
-  await AsyncStorage.removeItem('focusDuration');
+  await AsyncStorage.multiRemove([
+    'focusStart',
+    'focusDuration',
+    'focusPaused',
+    'focusPausedAt',
+    'focusRemainingAtPause',
+    'pausedTaskId',
+  ]);
   await Notifications.cancelAllScheduledNotificationsAsync();
 };
 
@@ -451,62 +502,87 @@ const handleReset = async () => {
     }`;
   }
 
-  const handleMarkCompleted = async () => {
-    if (!taskId) return;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+const handleMarkCompleted = async () => {
+  if (!taskId) return;
 
-    const { data: taskData } = await supabase
-      .from('tasks')
-      .select('repeat')
-      .eq('id', taskId)
-      .single();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
 
-    const scheduled = new Date(taskTime as string);
-    const now = new Date();
-    const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
+  const { data: taskData, error: taskError } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('id', taskId)
+    .single();
 
-    let points = diffMins <= 5 ? 500 : Math.max(0, 500 - diffMins * 10);
+  if (taskError || !taskData) {
+    console.error('Error fetching task:', taskError?.message);
+    return;
+  }
 
-    const { data: existing } = await supabase
+  const scheduled = new Date(taskTime as string);
+  const now = new Date();
+  const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
+  const points = diffMins <= 5 ? 500 : Math.max(0, 500 - diffMins * 10);
+
+    const category = ['Assignment', 'Exam Preparation', 'Self-Study'].includes(taskData.routine)
+    ? taskData.routine
+    : 'Others';
+
+   const timeSpent = focusDuration - secondsLeft;
+
+  await supabase.from('tasks_completed').insert({
+    user_id: user.id,
+    task_id: taskId,
+    routine: taskData.routine,
+    category, 
+    scheduled_time: scheduled.toISOString(),
+    completed_time: now.toISOString(),
+    punctuality_mins: diffMins,
+    points_earned: points,
+    time_spent_secs: timeSpent,
+  });
+
+  const { data: existing } = await supabase
+    .from('points')
+    .select('total_points, task_points')
+    .eq('user_id', user.id)
+    .single();
+
+  if (existing) {
+    await supabase
       .from('points')
-      .select('total_points, task_points')
-      .eq('user_id', user.id)
-      .single();
-
-    if (existing) {
-      await supabase
-        .from('points')
-        .update({
-          total_points: (existing.total_points || 0) + points,
-          task_points: (existing.task_points || 0) + points,
-          updated_at: now,
-        })
-        .eq('user_id', user.id);
-    } else {
-      await supabase.from('points').insert({
-        user_id: user.id,
-        total_points: points,
-        task_points: points,
+      .update({
+        total_points: (existing.total_points || 0) + points,
+        task_points: (existing.task_points || 0) + points,
         updated_at: now,
-      });
+      })
+      .eq('user_id', user.id);
+  } else {
+    await supabase.from('points').insert({
+      user_id: user.id,
+      total_points: points,
+      task_points: points,
+      updated_at: now,
+    });
+  }
+
+  Alert.alert('Task Completed', `You earned ${points} points!`);
+
+  if (!taskData?.repeat) {
+    await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', user.id);
+
+    const stored = await AsyncStorage.getItem('tasks');
+    if (stored) {
+      const updated = JSON.parse(stored).filter((t: any) => t.id !== taskId);
+      await AsyncStorage.setItem('tasks', JSON.stringify(updated));
     }
+  } else {
+    Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
+  }
+  await AsyncStorage.multiRemove(['focusStart', 'focusDuration', 'focusPaused', 'focusPausedAt', 'focusRemainingAtPause', 'pausedTaskId']);
 
-    Alert.alert('Task Completed', `You earned ${points} points!`);
-
-    if (!taskData?.repeat) {
-      await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', user.id);
-      const stored = await AsyncStorage.getItem('tasks');
-      if (stored) {
-        const updated = JSON.parse(stored).filter((t: any) => t.id !== taskId);
-        await AsyncStorage.setItem('tasks', JSON.stringify(updated));
-      }
-    } else {
-      Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
-    }
-
-    router.replace('/Dashboard/DailyPlanner');
-  };
+  router.replace('/Dashboard/DailyPlanner');
+};
 
   return (
     <View style={styles.container}>
