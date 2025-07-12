@@ -386,6 +386,7 @@ export default function PlannerScreen() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [customTask, setCustomTask] = useState('');
   const [open, setOpen] = useState(false);
+  const [pausedTaskId, setPausedTaskId] = useState<string | null>(null);
   const [taskOptions, setTaskOptions] = useState([
     { label: 'Assignment', value: 'Assignment' },
     { label: 'Exam Preparation', value: 'Exam Preparation' },
@@ -458,6 +459,14 @@ export default function PlannerScreen() {
       saveTasks();
     }
   }, [tasks]);
+
+useEffect(() => {
+  const getPausedTaskId = async () => {
+    const id = await AsyncStorage.getItem('pausedTaskId');
+    setPausedTaskId(id);
+  };
+  getPausedTaskId();
+}, []);
 
   useEffect(() => {
     fetchSleepTimes();
@@ -685,14 +694,14 @@ export default function PlannerScreen() {
           <Text style={styles.buttonText}>Wake Time: {formatTime(wakeUpTime)}</Text>
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity onPress={fetchSleepTimes} style={{ backgroundColor: '#4e6ab0', padding: 10, borderRadius: 8, alignSelf: 'flex-end', marginBottom: 10, marginTop: 5 }}>
+  
+      <TouchableOpacity onPress={fetchSleepTimes}>
         <Text style={{ color: 'white' }}>🔄 Refresh</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={cancelAllNotifications}>
-        <Text>🔁 Reset All Notifications</Text>
-      </TouchableOpacity>
+      {/* <TouchableOpacity onPress={cancelAllNotifications}>
+        <Text style={{ color: 'white' }}>🔁 Reset All Notifications</Text>
+      </TouchableOpacity> */}
 
       <FlatList
         data={tasks}
@@ -711,7 +720,9 @@ export default function PlannerScreen() {
               }
               style={styles.beginButton}
             >
-              <Text style={styles.deleteText}>Begin</Text>
+              <Text style={styles.deleteText}>
+                {pausedTaskId === String(item.id) ? 'Resume' : 'Begin'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
@@ -720,6 +731,7 @@ export default function PlannerScreen() {
         )}
         style={{ marginTop: 20, width: '100%' }}
       />
+  
     </View>
   );
 }
