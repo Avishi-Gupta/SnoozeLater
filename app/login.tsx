@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 export const loginUser = async (username: string, password: string) => {
@@ -65,7 +65,10 @@ export default function Login() {
               <Text style={styles.buttonText}>Login</Text>
             </TouchableOpacity>
       {message ? <Text>{message}</Text> : null}
-      <Button title="Don't have an account? Sign up" onPress={() => router.push('/register')} color='#ffffff'/>
+    
+      <TouchableOpacity onPress={() => router.push('/register')}>
+        <Text style={[styles.buttonText, { marginTop: 12 }]}>Don't have an account? Sign up</Text>
+      </TouchableOpacity>
     </View>
   );
 }
