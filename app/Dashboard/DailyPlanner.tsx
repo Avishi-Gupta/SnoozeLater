@@ -5,6 +5,366 @@ import * as Notifications from 'expo-notifications';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import DropDownPicker from 'react-native-dropdown-picker';
+
+// type Task = {
+//   id: string;
+//   routine: string;
+//   time: Date;
+//   repeat?: boolean;
+//   notifId?: string;
+// };
+
+// export default function PlannerScreen() {
+//   const router = useRouter();
+
+//   const [routine, setRoutine] = useState('');
+//   const [selectedTime, setSelectedTime] = useState(new Date());
+//   const [chooseTime, setChooseTime] = useState(false);
+//   const [tasks, setTasks] = useState<Task[]>([]);
+//   const [sleepTime, setSleepTime] = useState<Date | null>(null);
+//   const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
+//   const [repeat, setRepeat] = useState(false);
+
+//   const cancelAllNotifications = async () => {
+//   try {
+//     await Notifications.cancelAllScheduledNotificationsAsync();
+//     await AsyncStorage.removeItem('sleepNotifIds');
+//     await AsyncStorage.removeItem('wakeNotifIds');
+//     console.log('All scheduled notifications cancelled.');
+//   } catch (err) {
+//     console.error('Error cancelling notifications:', err);
+//   }
+// };
+
+
+//   useEffect(() => {
+//     const loadTasks = async () => {
+//     const { data, error } = await supabase
+//       .from('tasks')
+//       .select('*')
+//       .order('time', { ascending: true });
+
+//     if (error) {
+//       console.error('Error loading tasks:', error.message);
+//       return;
+//     }
+
+//     if (data) {
+//       const fixedTasks = data.map((task: any) => ({
+//         ...task,
+//         time: new Date(task.time),
+//         notifId: task.notif_id,
+//       }));
+//       setTasks(fixedTasks);
+//       await AsyncStorage.setItem('tasks', JSON.stringify(fixedTasks)); 
+//     }
+//   };
+
+//   loadTasks();
+// }, []);
+
+//   useEffect(() => {
+//     AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+//   }, [tasks]);
+
+// useEffect(() => {
+//   const saveTasks = async () => {
+//     await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+
+//     const { data, error: userError } = await supabase.auth.getUser();
+
+//     if (userError || !data.user) {
+//       return;
+//     }
+//     const userId = data.user.id;
+    
+//     for (const task of tasks) {
+//       await supabase.from('tasks').upsert({
+//         id: task.id,
+//         routine: task.routine,
+//         time: task.time.toISOString(),
+//         user_id: userId,
+//         repeat: task.repeat ?? false, 
+//         ...(task.notifId !== undefined && { notif_id: task.notifId }),
+//       });
+//     }
+//   };
+
+//   if (tasks.length > 0) {
+//     saveTasks(); 
+//   }
+// }, [tasks]); 
+
+// useEffect(() => {
+//     fetchSleepTimes();
+//   }, []);
+
+//   const fetchSleepTimes = async () => {
+//     const { data: { user } } = await supabase.auth.getUser();
+//     if (!user) return;
+
+//     const { data, error } = await supabase
+//       .from('sleep_data')
+//       .select('target_sleep_time, target_wake_time')
+//       .eq('user_id', user.id)
+//       .order('inserted_at', { ascending: false })
+//       .limit(1)
+//       .single();
+
+//     if (!error && data) {
+//       if (data.target_sleep_time) setSleepTime(new Date(data.target_sleep_time));
+//       if (data.target_wake_time) setWakeUpTime(new Date(data.target_wake_time));
+
+//       if (data.target_sleep_time) {
+//         await scheduleSleepOrWakeNotification('Sleep', new Date(data.target_sleep_time), true);
+//       }
+//       if (data.target_wake_time) {
+//         await scheduleSleepOrWakeNotification('Waking Up', new Date(data.target_wake_time), true);
+//       }
+//     }
+//   };
+
+//   function formatTime(date: Date | null) {
+// if (!date) return '--:--';
+//     let hours = date.getHours();
+//     const minutes = date.getMinutes().toString().padStart(2, '0');
+//     return `${hours}:${minutes}`;
+//   }
+  
+//   async function scheduleNotification(title: string, date: Date, repeat: boolean){
+//      const id = await Notifications.scheduleNotificationAsync({
+//       content: {
+//         title: 'Routine Reminder',
+//         body: `Time for: ${title}`,
+//       },
+//       trigger: {
+//         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+//         hour: date.getHours(),
+//         minute: date.getMinutes(),
+//         repeats: repeat,
+//       },
+//     });
+
+//     return id;
+//   }
+
+// const cancelOldNotification = async (key: string) => {
+//   const stored = await AsyncStorage.getItem(key);
+//   if (stored) {
+//     const ids = JSON.parse(stored);
+//     for (const id of ids) {
+//       await Notifications.cancelScheduledNotificationAsync(id);
+//     }
+//     await AsyncStorage.removeItem(key);
+//   }
+// };
+
+//   async function scheduleSleepOrWakeNotification(
+//   type: 'Sleep' | 'Waking Up',
+//   date: Date,
+//   repeat: boolean
+// ) {
+//   const key = type === 'Sleep' ? 'sleepNotifIds' : 'wakeNotifIds';
+
+//   await cancelOldNotification(key);
+
+//   const id = await Notifications.scheduleNotificationAsync({
+//     content: {
+//       title: 'Routine Reminder',
+//       body: `⏰ ${type} Time ⏰`,
+//       sound: 'alarm-clock.mp3',
+//       vibrate: [500, 500, 500], 
+//       priority: Notifications.AndroidNotificationPriority.HIGH,
+//     },
+//     trigger: {
+//       type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+//       hour: date.getHours(),
+//       minute: date.getMinutes(),
+//       repeats: repeat,
+//     },
+//   });
+
+//   await AsyncStorage.setItem(key, JSON.stringify([id]));
+
+//   return id;
+// }
+
+// async function handleAddTask() {
+//   if (routine.trim() === '') return;
+
+
+//   let notifId: string | null = null;
+
+//   try {
+//     const { status } = await Notifications.getPermissionsAsync();
+
+//     if (status !== 'granted') {
+//       const req = await Notifications.requestPermissionsAsync();
+//       if (req.status !== 'granted') {
+//         console.warn('Notification permissions not granted.');
+//       }
+//     }
+
+//     notifId = await scheduleNotification(routine, selectedTime, repeat);
+//   } catch (err) {
+//     console.error('Notification scheduling failed:', err);
+//   }
+
+//   const newTask: Task = {
+//     id: String(Date.now()),
+//     routine,
+//     time: selectedTime,
+//     repeat,
+//     notifId: notifId ?? undefined, 
+//   };
+
+//   const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
+
+//   setTasks(updatedTasks);
+//   setRoutine('');
+//   setSelectedTime(new Date());
+//   setRepeat(false);
+// }
+
+
+// const handleDeleteTask = async (taskId: string) => {
+//   const taskToDelete = tasks.find((t) => t.id === taskId);
+
+//   if (taskToDelete?.notifId) {
+//     await Notifications.cancelScheduledNotificationAsync(taskToDelete.notifId);
+//   }
+
+//   const { error } = await supabase
+//     .from('tasks')
+//     .delete()
+//     .eq('id', taskId);
+
+//   if (error) {
+//     console.error('Error deleting from Supabase:', error.message);
+//   }
+
+//   const updated = tasks.filter((t) => t.id !== taskId);
+//   await AsyncStorage.setItem('tasks', JSON.stringify(updated));
+//   setTasks(updated); 
+// };
+
+
+//   return (
+//     <View style={styles.container}>
+//       <Text style={styles.title}>Plan your day here!</Text>
+
+//       <TextInput
+//         placeholder="What do you want to do?"
+//         value={routine}
+//         onChangeText={setRoutine}
+//         style={styles.input}
+//         placeholderTextColor="#FFFFFF"
+//       />
+
+// <TouchableOpacity onPress={() => setChooseTime(true)} style={styles.input}>
+//   <Text style={{ color: '#fff' }}> Select Time : {formatTime(selectedTime)}</Text>
+// </TouchableOpacity>
+
+//       {chooseTime && (
+//   <View style={styles.pickerOverlay}>
+//     <View style={styles.pickerContainer}>
+//       <DateTimePicker
+//         value={selectedTime}
+//         mode="time"
+//         display="spinner"
+//         onChange={(event, date) => {
+//           if (date) {
+//             setSelectedTime(date);
+//           }
+//         }}
+//         style={{ backgroundColor: '#fff' }}
+//       />
+//       <TouchableOpacity onPress={() => setChooseTime(false)} style={styles.closeButton}>
+//         <Text style={{ color: '#fff' }}>Done</Text>
+//       </TouchableOpacity>
+//     </View>
+//   </View>
+// )}
+
+// <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+//   <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
+//     <Text style={styles.buttonText}>Once</Text>
+//   </TouchableOpacity>
+//   <TouchableOpacity onPress={() => setRepeat(true)} style={[styles.repeatButton, repeat && styles.selectedRepeat]}>
+//     <Text style={styles.buttonText}>Repeat</Text>
+//   </TouchableOpacity>
+// </View>
+
+//       <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
+//         <Text style={styles.buttonText}>Add Task</Text>
+//       </TouchableOpacity>
+
+//       <View style={styles.timeRow}>
+//   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+//     <Text style={styles.buttonText}>Sleep Time</Text>
+//   </TouchableOpacity>
+//    <Text style={styles.timeLabel}>{formatTime(sleepTime)}</Text>
+// </View>
+
+// <View style={styles.timeRow}>
+//   <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+//     <Text style={styles.buttonText}>Wake Time</Text>
+//   </TouchableOpacity>
+//    <Text style={styles.timeLabel}>{formatTime(wakeUpTime)}</Text>
+// </View>
+
+//     <TouchableOpacity
+//       onPress={fetchSleepTimes}
+//       style={{
+//         backgroundColor: '#4e6ab0',
+//         padding: 10,
+//         borderRadius: 8,
+//         alignSelf: 'flex-end',
+//         marginBottom: 10,
+//         marginTop: 5,
+//       }}
+//     >
+//       <Text style={{ color: 'white' }}>🔄 Refresh</Text>
+//     </TouchableOpacity>
+//           <TouchableOpacity onPress={cancelAllNotifications}>
+//   <Text>🔁 Reset All Notifications</Text>
+// </TouchableOpacity>
+
+//       <FlatList
+//         data={tasks}
+//         keyExtractor={(item) => item.id}
+//         renderItem={({ item }) => (
+//           <View style={styles.task}>
+//             <Text style={styles.taskText}>
+//               {formatTime(item.time)} : {item.routine}
+//             </Text>
+
+//       <TouchableOpacity
+//         onPress={() =>
+//           router.push({
+//             pathname: '../FocusTimer',
+//             params: {
+//               taskId: item.id,
+//               taskTime: item.time.toString(),
+//             },
+//           })
+//         }
+//         style={styles.beginButton}
+//       >
+//         <Text style={styles.deleteText}>Begin</Text>
+//       </TouchableOpacity>
+
+//             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
+//               <Text style={styles.deleteText}>Delete</Text>
+//             </TouchableOpacity>
+//           </View>
+//         )}
+//         style={{ marginTop: 20, width: '100%' }}
+//       />
+//     </View>
+//   );
+// }
 
 type Task = {
   id: string;
@@ -17,85 +377,89 @@ type Task = {
 export default function PlannerScreen() {
   const router = useRouter();
 
-  const [routine, setRoutine] = useState('');
-  const [selectedTime, setSelectedTime] = useState(new Date());
+  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
   const [chooseTime, setChooseTime] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sleepTime, setSleepTime] = useState<Date | null>(null);
   const [wakeUpTime, setWakeUpTime] = useState<Date | null>(null);
   const [repeat, setRepeat] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [customTask, setCustomTask] = useState('');
+  const [open, setOpen] = useState(false);
+  const [taskOptions, setTaskOptions] = useState([
+    { label: 'Assignment', value: 'Assignment' },
+    { label: 'Exam Preparation', value: 'Exam Preparation' },
+    { label: 'Self-Study', value: 'Self-Study' },
+    { label: 'Others', value: 'Others' },
+  ]);
 
   const cancelAllNotifications = async () => {
-  try {
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    await AsyncStorage.removeItem('sleepNotifIds');
-    await AsyncStorage.removeItem('wakeNotifIds');
-    console.log('All scheduled notifications cancelled.');
-  } catch (err) {
-    console.error('Error cancelling notifications:', err);
-  }
-};
-
-
-  useEffect(() => {
-    const loadTasks = async () => {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('time', { ascending: true });
-
-    if (error) {
-      console.error('Error loading tasks:', error.message);
-      return;
-    }
-
-    if (data) {
-      const fixedTasks = data.map((task: any) => ({
-        ...task,
-        time: new Date(task.time),
-        notifId: task.notif_id,
-      }));
-      setTasks(fixedTasks);
-      await AsyncStorage.setItem('tasks', JSON.stringify(fixedTasks)); 
+    try {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      await AsyncStorage.removeItem('sleepNotifIds');
+      await AsyncStorage.removeItem('wakeNotifIds');
+      console.log('All scheduled notifications cancelled.');
+    } catch (err) {
+      console.error('Error cancelling notifications:', err);
     }
   };
 
-  loadTasks();
-}, []);
+  useEffect(() => {
+    const loadTasks = async () => {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .order('time', { ascending: true });
+
+      if (error) {
+        console.error('Error loading tasks:', error.message);
+        return;
+      }
+
+      if (data) {
+        const fixedTasks = data.map((task: any) => ({
+          ...task,
+          time: new Date(task.time),
+          notifId: task.notif_id,
+        }));
+        setTasks(fixedTasks);
+        await AsyncStorage.setItem('tasks', JSON.stringify(fixedTasks));
+      }
+    };
+
+    loadTasks();
+  }, []);
 
   useEffect(() => {
     AsyncStorage.setItem('tasks', JSON.stringify(tasks));
   }, [tasks]);
 
-useEffect(() => {
-  const saveTasks = async () => {
-    await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
+  useEffect(() => {
+    const saveTasks = async () => {
+      await AsyncStorage.setItem('tasks', JSON.stringify(tasks));
 
-    const { data, error: userError } = await supabase.auth.getUser();
+      const { data, error: userError } = await supabase.auth.getUser();
+      if (userError || !data.user) return;
+      const userId = data.user.id;
 
-    if (userError || !data.user) {
-      return;
+      for (const task of tasks) {
+        await supabase.from('tasks').upsert({
+          id: task.id,
+          routine: task.routine,
+          time: task.time.toISOString(),
+          user_id: userId,
+          repeat: task.repeat ?? false,
+          ...(task.notifId !== undefined && { notif_id: task.notifId }),
+        });
+      }
+    };
+
+    if (tasks.length > 0) {
+      saveTasks();
     }
-    const userId = data.user.id;
-    
-    for (const task of tasks) {
-      await supabase.from('tasks').upsert({
-        id: task.id,
-        routine: task.routine,
-        time: task.time.toISOString(),
-        user_id: userId,
-        repeat: task.repeat ?? false, 
-        ...(task.notifId !== undefined && { notif_id: task.notifId }),
-      });
-    }
-  };
+  }, [tasks]);
 
-  if (tasks.length > 0) {
-    saveTasks(); 
-  }
-}, [tasks]); 
-
-useEffect(() => {
+  useEffect(() => {
     fetchSleepTimes();
   }, []);
 
@@ -125,14 +489,14 @@ useEffect(() => {
   };
 
   function formatTime(date: Date | null) {
-if (!date) return '--:--';
+    if (!date) return 'Select Time';
     let hours = date.getHours();
     const minutes = date.getMinutes().toString().padStart(2, '0');
     return `${hours}:${minutes}`;
   }
-  
-  async function scheduleNotification(title: string, date: Date, repeat: boolean){
-     const id = await Notifications.scheduleNotificationAsync({
+
+  async function scheduleNotification(title: string, date: Date, repeat: boolean) {
+    const id = await Notifications.scheduleNotificationAsync({
       content: {
         title: 'Routine Reminder',
         body: `Time for: ${title}`,
@@ -144,191 +508,191 @@ if (!date) return '--:--';
         repeats: repeat,
       },
     });
-
     return id;
   }
 
-const cancelOldNotification = async (key: string) => {
-  const stored = await AsyncStorage.getItem(key);
-  if (stored) {
-    const ids = JSON.parse(stored);
-    for (const id of ids) {
-      await Notifications.cancelScheduledNotificationAsync(id);
-    }
-    await AsyncStorage.removeItem(key);
-  }
-};
-
-  async function scheduleSleepOrWakeNotification(
-  type: 'Sleep' | 'Waking Up',
-  date: Date,
-  repeat: boolean
-) {
-  const key = type === 'Sleep' ? 'sleepNotifIds' : 'wakeNotifIds';
-
-  await cancelOldNotification(key);
-
-  const id = await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Routine Reminder',
-      body: `⏰ ${type} Time ⏰`,
-      sound: 'alarm-clock.mp3',
-      vibrate: [500, 500, 500], 
-      priority: Notifications.AndroidNotificationPriority.HIGH,
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-      hour: date.getHours(),
-      minute: date.getMinutes(),
-      repeats: repeat,
-    },
-  });
-
-  await AsyncStorage.setItem(key, JSON.stringify([id]));
-
-  return id;
-}
-
-async function handleAddTask() {
-  if (routine.trim() === '') return;
-
-
-  let notifId: string | null = null;
-
-  try {
-    const { status } = await Notifications.getPermissionsAsync();
-
-    if (status !== 'granted') {
-      const req = await Notifications.requestPermissionsAsync();
-      if (req.status !== 'granted') {
-        console.warn('Notification permissions not granted.');
+  const cancelOldNotification = async (key: string) => {
+    const stored = await AsyncStorage.getItem(key);
+    if (stored) {
+      const ids = JSON.parse(stored);
+      for (const id of ids) {
+        await Notifications.cancelScheduledNotificationAsync(id);
       }
+      await AsyncStorage.removeItem(key);
     }
-
-    notifId = await scheduleNotification(routine, selectedTime, repeat);
-  } catch (err) {
-    console.error('Notification scheduling failed:', err);
-  }
-
-  const newTask: Task = {
-    id: String(Date.now()),
-    routine,
-    time: selectedTime,
-    repeat,
-    notifId: notifId ?? undefined, 
   };
 
-  const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
+  async function scheduleSleepOrWakeNotification(type: 'Sleep' | 'Waking Up', date: Date, repeat: boolean) {
+    const key = type === 'Sleep' ? 'sleepNotifIds' : 'wakeNotifIds';
+    await cancelOldNotification(key);
 
-  setTasks(updatedTasks);
-  setRoutine('');
-  setSelectedTime(new Date());
-  setRepeat(false);
-}
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Routine Reminder',
+        body: `⏰ ${type} Time ⏰`,
+        sound: 'alarm-clock.mp3',
+        vibrate: [500, 500, 500],
+        priority: Notifications.AndroidNotificationPriority.HIGH,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+        hour: date.getHours(),
+        minute: date.getMinutes(),
+        repeats: repeat,
+      },
+    });
 
-
-const handleDeleteTask = async (taskId: string) => {
-  const taskToDelete = tasks.find((t) => t.id === taskId);
-
-  if (taskToDelete?.notifId) {
-    await Notifications.cancelScheduledNotificationAsync(taskToDelete.notifId);
+    await AsyncStorage.setItem(key, JSON.stringify([id]));
+    return id;
   }
 
-  const { error } = await supabase
-    .from('tasks')
-    .delete()
-    .eq('id', taskId);
+  async function handleAddTask() {
+    const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
 
-  if (error) {
-    console.error('Error deleting from Supabase:', error.message);
+    if (!selectedTime || !taskTitle) return;
+
+    let notifId: string | null = null;
+
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') {
+        const req = await Notifications.requestPermissionsAsync();
+        if (req.status !== 'granted') {
+          console.warn('Notification permissions not granted.');
+        }
+      }
+      notifId = await scheduleNotification(taskTitle, selectedTime, repeat);
+    } catch (err) {
+      console.error('Notification scheduling failed:', err);
+    }
+
+    const newTask: Task = {
+      id: String(Date.now()),
+      routine: taskTitle,
+      time: selectedTime,
+      repeat,
+      notifId: notifId ?? undefined,
+    };
+
+    const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
+    setTasks(updatedTasks);
+
+    setSelectedCategory('');
+    setCustomTask('');
+    setSelectedTime(null);
+    setRepeat(false);
   }
 
-  const updated = tasks.filter((t) => t.id !== taskId);
-  await AsyncStorage.setItem('tasks', JSON.stringify(updated));
-  setTasks(updated); 
-};
+  const handleDeleteTask = async (taskId: string) => {
+    const taskToDelete = tasks.find((t) => t.id === taskId);
+    if (taskToDelete?.notifId) {
+      await Notifications.cancelScheduledNotificationAsync(taskToDelete.notifId);
+    }
 
+    const { error } = await supabase.from('tasks').delete().eq('id', taskId);
+    if (error) console.error('Error deleting from Supabase:', error.message);
+
+    const updated = tasks.filter((t) => t.id !== taskId);
+    await AsyncStorage.setItem('tasks', JSON.stringify(updated));
+    setTasks(updated);
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Plan your day here!</Text>
+<DropDownPicker
+  open={open}
+  value={selectedCategory}
+  items={taskOptions}
+  setOpen={setOpen}
+  setValue={setSelectedCategory}
+  setItems={setTaskOptions}
+  placeholder="Choose Task: "
+  style={{
+    backgroundColor: '#4e6ab0',
+    borderColor: 'white',
+    marginBottom: 10,
+  }}
+  dropDownContainerStyle={{
+    backgroundColor: '#4e6ab0',
+    borderColor: 'white',
+  }}
+  textStyle={{
+    color: '#fff',
+  }}
+  listItemLabelStyle={{
+    color: '#fff',
+  }}
+  placeholderStyle={{
+    color: '#fff',
+  }}
+/>
 
-      <TextInput
-        placeholder="What do you want to do?"
-        value={routine}
-        onChangeText={setRoutine}
-        style={styles.input}
-        placeholderTextColor="#FFFFFF"
-      />
+      {selectedCategory === 'Others' && (
+        <TextInput
+          placeholder="Enter custom task"
+          value={customTask}
+          onChangeText={setCustomTask}
+          style={styles.input}
+          placeholderTextColor="#FFFFFF"
+        />
+      )}
 
-<TouchableOpacity onPress={() => setChooseTime(true)} style={styles.input}>
-  <Text style={{ color: '#fff' }}> Select Time : {formatTime(selectedTime)}</Text>
-</TouchableOpacity>
+      <TouchableOpacity onPress={() => setChooseTime(true)} style={styles.input}>
+        <Text style={{ color: '#fff' }}>{formatTime(selectedTime)}</Text>
+      </TouchableOpacity>
 
       {chooseTime && (
-  <View style={styles.pickerOverlay}>
-    <View style={styles.pickerContainer}>
-      <DateTimePicker
-        value={selectedTime}
-        mode="time"
-        display="spinner"
-        onChange={(event, date) => {
-          if (date) {
-            setSelectedTime(date);
-          }
-        }}
-        style={{ backgroundColor: '#fff' }}
-      />
-      <TouchableOpacity onPress={() => setChooseTime(false)} style={styles.closeButton}>
-        <Text style={{ color: '#fff' }}>Done</Text>
-      </TouchableOpacity>
-    </View>
-  </View>
-)}
+        <View style={styles.pickerOverlay}>
+          <View style={styles.pickerContainer}>
+            <DateTimePicker
+              value={selectedTime || new Date()}
+              mode="time"
+              display="spinner"
+              onChange={(event, date) => {
+                if (date) {
+                  setSelectedTime(date);
+                }
+              }}
+              style={{ backgroundColor: '#fff' }}
+            />
+            <TouchableOpacity onPress={() => setChooseTime(false)} style={styles.closeButton}>
+              <Text style={{ color: '#fff' }}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
-<View style={{ flexDirection: 'row', marginBottom: 10 }}>
-  <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
-    <Text style={styles.buttonText}>Once</Text>
-  </TouchableOpacity>
-  <TouchableOpacity onPress={() => setRepeat(true)} style={[styles.repeatButton, repeat && styles.selectedRepeat]}>
-    <Text style={styles.buttonText}>Repeat</Text>
-  </TouchableOpacity>
-</View>
+      <View style={{ flexDirection: 'row', marginBottom: 10 }}>
+        <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
+          <Text style={styles.buttonText}>Once</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setRepeat(true)} style={[styles.repeatButton, repeat && styles.selectedRepeat]}>
+          <Text style={styles.buttonText}>Repeat</Text>
+        </TouchableOpacity>
+      </View>
 
       <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
         <Text style={styles.buttonText}>Add Task</Text>
       </TouchableOpacity>
 
       <View style={styles.timeRow}>
-  <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Sleep Time</Text>
-  </TouchableOpacity>
-   <Text style={styles.timeLabel}>{formatTime(sleepTime)}</Text>
-</View>
+        <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+          <Text style={styles.buttonText}>Sleep Time: {formatTime(sleepTime)}</Text>
+        </TouchableOpacity>
 
-<View style={styles.timeRow}>
-  <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
-    <Text style={styles.buttonText}>Wake Time</Text>
-  </TouchableOpacity>
-   <Text style={styles.timeLabel}>{formatTime(wakeUpTime)}</Text>
-</View>
+        <TouchableOpacity style={styles.timeButton} onPress={() => router.push('./SleepTimer')}>
+          <Text style={styles.buttonText}>Wake Time: {formatTime(wakeUpTime)}</Text>
+        </TouchableOpacity>
+      </View>
 
-    <TouchableOpacity
-      onPress={fetchSleepTimes}
-      style={{
-        backgroundColor: '#4e6ab0',
-        padding: 10,
-        borderRadius: 8,
-        alignSelf: 'flex-end',
-        marginBottom: 10,
-        marginTop: 5,
-      }}
-    >
-      <Text style={{ color: 'white' }}>🔄 Refresh</Text>
-    </TouchableOpacity>
-          <TouchableOpacity onPress={cancelAllNotifications}>
-  <Text>🔁 Reset All Notifications</Text>
-</TouchableOpacity>
+      <TouchableOpacity onPress={fetchSleepTimes} style={{ backgroundColor: '#4e6ab0', padding: 10, borderRadius: 8, alignSelf: 'flex-end', marginBottom: 10, marginTop: 5 }}>
+        <Text style={{ color: 'white' }}>🔄 Refresh</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={cancelAllNotifications}>
+        <Text>🔁 Reset All Notifications</Text>
+      </TouchableOpacity>
 
       <FlatList
         data={tasks}
@@ -338,22 +702,17 @@ const handleDeleteTask = async (taskId: string) => {
             <Text style={styles.taskText}>
               {formatTime(item.time)} : {item.routine}
             </Text>
-
-      <TouchableOpacity
-        onPress={() =>
-          router.push({
-            pathname: '../FocusTimer',
-            params: {
-              taskId: item.id,
-              taskTime: item.time.toString(),
-            },
-          })
-        }
-        style={styles.beginButton}
-      >
-        <Text style={styles.deleteText}>Begin</Text>
-      </TouchableOpacity>
-
+            <TouchableOpacity
+              onPress={() =>
+                router.push({
+                  pathname: '../FocusTimer',
+                  params: { taskId: item.id, taskTime: item.time.toString() },
+                })
+              }
+              style={styles.beginButton}
+            >
+              <Text style={styles.deleteText}>Begin</Text>
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
             </TouchableOpacity>
@@ -464,8 +823,8 @@ closeButton: {
 },
 timeRow: {
   flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'flex-start',
+  justifyContent: 'center',
+  alignItems: 'center',
   width: '70%',
   marginBottom: 3,
 },

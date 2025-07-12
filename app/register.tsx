@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Button, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 // import { registerUser } from '../lib/api';
 import { supabase } from '../lib/supabase';
 
@@ -64,7 +64,9 @@ export default function Register() {
               <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
       {message ? <Text>{message}</Text> : null}
-      <Button title="Already have an account? Login" onPress={() => router.push('/login')} color='#ffffff'/>
+      <TouchableOpacity onPress={() => router.push('/register')}>
+              <Text style={[styles.buttonText, { marginTop: 12 }]}>Don't have an account? Sign up</Text>
+            </TouchableOpacity>
     </View>
   );
 }

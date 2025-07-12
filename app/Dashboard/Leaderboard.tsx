@@ -73,7 +73,19 @@ const fetchLeaderboard = async () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Leaderboard</Text>
-
+{currentUser && userRank !== null && (
+  <>
+    <View style={{ height: 1 }} />
+    <Text style={{ color: 'white', marginBottom: 4, fontSize: 16 }}>
+      Your Rank
+    </Text>
+    <View style={[styles.item, styles.userRow]} key="your-rank-row">
+      <Text style={styles.rank}>{userRank}.</Text>
+      <Text style={styles.name}>{currentUser.name}</Text>
+      <Text style={styles.points}>{currentUser.points} pts</Text>
+    </View>
+  </>
+)}
       <FlatList
         data={topUsers}
         keyExtractor={(item) => item.id}
@@ -85,20 +97,6 @@ const fetchLeaderboard = async () => {
           </View>
         )}
       />
-
-{currentUser && userRank !== null && (
-  <>
-    <View style={{ height: 10 }} />
-    <Text style={{ color: 'white', marginTop: 12, marginBottom: 4 }}>
-      Your Rank
-    </Text>
-    <View style={[styles.item, styles.userRow]} key="your-rank-row">
-      <Text style={styles.rank}>{userRank}.</Text>
-      <Text style={styles.name}>{currentUser.name}</Text>
-      <Text style={styles.points}>{currentUser.points} pts</Text>
-    </View>
-  </>
-)}
     </View>
   );
 }
@@ -112,7 +110,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 10,
     marginVertical: 6,
     borderRadius: 8,
     elevation: 1,

@@ -358,10 +358,10 @@ const handleSaveAndAwardPoints = async () => {
           </View>
         </View>
       )}
-
+{/* 
       <View style={styles.actionButtons}>
         <Button title="Back" onPress={() => router.push('/Dashboard/DailyPlanner')} color="darkgrey" />
-      </View>
+      </View> */}
     </View>
   );
 }
