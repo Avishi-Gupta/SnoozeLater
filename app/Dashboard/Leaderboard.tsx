@@ -76,7 +76,7 @@ const fetchLeaderboard = async () => {
 {currentUser && userRank !== null && (
   <>
     <View style={{ height: 1 }} />
-    <Text style={{ color: 'white', marginBottom: 4, fontSize: 16 }}>
+    <Text style={{ color: 'white', marginBottom: 4, fontSize: 20 }}>
       Your Rank
     </Text>
     <View style={[styles.item, styles.userRow]} key="your-rank-row">
@@ -93,7 +93,7 @@ const fetchLeaderboard = async () => {
           <View style={styles.item}>
             <Text style={styles.rank}>{index + 1}.</Text>
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.points}>{item.points} points</Text>
+            <Text style={styles.points}>{item.points} pts</Text>
           </View>
         )}
       />

@@ -17,239 +17,6 @@ import {
   View,
 } from 'react-native';
 
-// export default function FocusTimer() {
-//   useKeepAwake();
-//   const router = useRouter();
-
-//   const [inputMinutes, setInputMinutes] = useState('25'); // default 25 mins as string
-//   const [secondsLeft, setSecondsLeft] = useState(0);
-//   const [isRunning, setIsRunning] = useState(false);
-//   const [isPaused, setIsPaused] = useState(false);
-//   const [endOptions, setEndOptions] = useState(false);
-//   const { taskId, taskTime } = useLocalSearchParams();
-
-//   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-//   const soundRef = useRef<Audio.Sound | null>(null);
-
-
-//   useEffect(() => {
-//     if (isRunning && !isPaused) {
-//       timerRef.current = setInterval(() => {
-//         setSecondsLeft((prev) => {
-//           if (prev <= 1) {
-//             clearInterval(timerRef.current!);
-//             playAlarm();
-//             setIsRunning(false);
-//             setEndOptions(true);
-//             return 0;
-//           }
-//           return prev - 1;
-//         });
-//       }, 1000);
-//     }
-
-//     return () => {
-//       if (timerRef.current) clearInterval(timerRef.current);
-//     };
-//   }, [isRunning, isPaused]);
-
-//   useEffect(() => {
-//   const loadSound = async () => {
-//     const { sound } = await Audio.Sound.createAsync(
-//       require('@/assets/sound/alarm-clock.mp3')
-//     );
-//     soundRef.current = sound;
-//   };
-
-//   loadSound();
-
-//    return () => {
-//     if (soundRef.current) {
-//       soundRef.current.unloadAsync();
-//     }
-//   };
-// }, []);
-
-// const playAlarm = async () => {
-//     if (soundRef.current) {
-//       await soundRef.current.replayAsync();
-//     }
-// };
-
-//   function formatTime(seconds: number) {
-//     const minutes = Math.floor(seconds / 60);
-//     const secs = seconds % 60;
-//     const Mins = minutes < 10 ? '0' + minutes : minutes;
-//     const Secs = secs < 10 ? '0' + secs : secs;
-//     return Mins + ':' + Secs;
-//   }
-
-//   const handleStart = () => {
-//     const mins = parseInt(inputMinutes);
-//     if (!isNaN(mins) && mins > 0) {
-//       setSecondsLeft(mins * 60);
-//       setIsRunning(true);
-//       setIsPaused(false);
-//       Keyboard.dismiss();
-//     }
-//   };
-
-//   const handlePauseResume = () => {
-//     if (isRunning) {
-//       setIsPaused((p) => !p);
-//     }
-//   };
-
-//   const handleReset = () => {
-//     setIsRunning(false);
-//     setIsPaused(false);
-//     setSecondsLeft(0);
-//   };
-
-//   const handleMarkCompleted = async () => {
-//   if (!taskId) return;
-//   const { data: { user } } = await supabase.auth.getUser();
-//   if (!user) return;
-
-//   const { data: taskData } = await supabase
-//     .from('tasks')
-//     .select('repeat')
-//     .eq('id', taskId)
-//     .single();
-
-//   const scheduled = new Date(taskTime as string);
-//   const now = new Date();
-//   const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
-
-//   let points = diffMins <= 5 ? 500 : Math.max(0, 500 - diffMins * 10);
-
-//   const { data: existing } = await supabase
-//     .from('points')
-//     .select('total_points, task_points')
-//     .eq('user_id', user.id)
-//     .single();
-
-//   if (existing) {
-//     await supabase
-//       .from('points')
-//       .update({
-//         total_points: (existing.total_points || 0) + points,
-//         task_points: (existing.task_points || 0) + points,
-//         updated_at: now,
-//       })
-//       .eq('user_id', user.id);
-//   } else {
-//     await supabase
-//       .from('points')
-//       .insert({
-//         user_id: user.id,
-//         total_points: points,
-//         task_points: points,
-//         updated_at: now,
-//       });
-//   }
-
-//   Alert.alert('Task Completed', `You earned ${points} points!`);
-
-
-//   if (!taskData?.repeat) {
-//     await supabase.from('tasks').delete().eq('id', taskId).eq('user_id', user.id);
-//     const stored = await AsyncStorage.getItem('tasks');
-//     if (stored) {
-//       const updated = JSON.parse(stored).filter((t: any) => t.id !== taskId);
-//       await AsyncStorage.setItem('tasks', JSON.stringify(updated));
-//     }
-//   } else {
-//     Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
-//   }
-
-//   router.replace('/Dashboard/DailyPlanner');
-// };  
-
-//   return (
-//     <View style={styles.container}>
-//       <Text style={styles.title}>Focus Timer</Text>
-
-//       {!isRunning ? (
-//         <View style={styles.inputContainer}>
-//           <TextInput
-//             keyboardType="number-pad"
-//             placeholder="Enter minutes"
-//             value={inputMinutes}
-//             onChangeText={setInputMinutes}
-//             style={styles.input}
-//             editable={!isRunning}
-//           />
-//           <TouchableOpacity style={styles.button} onPress={handleStart}>
-//             <Text style={styles.buttonText}>Start</Text>
-//           </TouchableOpacity>
-//         </View>
-//       ) : (
-//         <>
-//           <Text style={styles.timer}>{formatTime(secondsLeft)}</Text>
-
-//           <TouchableOpacity
-//             style={[styles.button, { backgroundColor: isPaused ? 'purple' : 'maroon' }]}
-//             onPress={handlePauseResume}
-//           >
-//             <Text style={styles.buttonText}>{isPaused ? 'Resume' : 'Pause'}</Text>
-//           </TouchableOpacity>
-
-//           <TouchableOpacity
-//             style={[styles.button, { backgroundColor: '#999' }]}
-//             onPress={handleReset}
-//           >
-//             <Text style={styles.buttonText}>Reset</Text>
-//           </TouchableOpacity>
-//         </>
-//       )}
-
-//       {isRunning && isPaused && (
-//         <TouchableOpacity
-//           onPress={handleMarkCompleted}
-//           style={{ backgroundColor: '#4caf50', padding: 12, borderRadius: 8, marginTop: 20 }}
-//         >
-//           <Text style={{ color: 'white', textAlign: 'center' }}>Mark Completed</Text>
-//         </TouchableOpacity>
-//       )}
-
-//           {endOptions && (
-//         <View style={styles.popupOverlay}>
-//           <View style={styles.popupContainer}>
-//             <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>Time's up!</Text>
-
-//             <TouchableOpacity
-//               style={[styles.button, { marginBottom: 10, backgroundColor: '#4e6ab0' }]}
-//               onPress={() => {
-//                 setIsRunning(false);
-//                 setIsPaused(false);
-//                 setEndOptions(false);
-//               }}
-//             >
-//               <Text style={styles.buttonText}>Need More Time</Text>
-//             </TouchableOpacity>
-
-//         <TouchableOpacity
-//           style={[styles.button, { backgroundColor: '#5cb85c' }]}
-//           onPress={handleMarkCompleted}
-//         >
-//           <Text style={styles.buttonText}>Mark as Completed</Text>
-//         </TouchableOpacity>
-
-//             </View>
-//           </View>
-//         )}
-
-
-//       <TouchableOpacity
-//         style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
-//         onPress={() => router.replace('/Dashboard/DailyPlanner')}
-//       >
-//         <Text style={styles.buttonText}>Back to Planner</Text>
-//       </TouchableOpacity>
-//     </View>
-//   );
-// }
 export default function FocusTimer() {
   useKeepAwake();
   const router = useRouter();
@@ -270,19 +37,6 @@ export default function FocusTimer() {
 
 useEffect(() => {
   const restoreTimer = async () => {
-        const storedTaskId = await AsyncStorage.getItem('pausedTaskId');
-
-    if (storedTaskId && storedTaskId !== (Array.isArray(taskId) ? taskId[0] : taskId)) {
-      // Clear all previous timer-related storage if switching tasks
-      await AsyncStorage.multiRemove([
-        'focusStart',
-        'focusDuration',
-        'pausedTaskId',
-        'pauseTime',
-        'remainingAtPause'
-      ]);
-      return;
-    }
 
     const storedStart = await AsyncStorage.getItem('focusStart');
     const storedDuration = await AsyncStorage.getItem('focusDuration');
@@ -395,6 +149,17 @@ const playAlarm = async () => {
 };
 
 const handleStart = async () => {
+  await supabase.from('tasks').update({
+  start_time: new Date().toISOString(),
+  status: 'in_progress',
+}).eq('id', taskId);
+
+  await AsyncStorage.multiRemove([
+  'focusStart',
+  'focusDuration',
+  'pauseTime',
+  'remainingAtPause'
+]);
   const mins = parseInt(inputMinutes);
   if (!isNaN(mins) && mins > 0) {
     const now = new Date();
@@ -440,7 +205,6 @@ const handlePauseResume = async () => {
     await AsyncStorage.setItem('focusPaused', 'true');
     await AsyncStorage.setItem('focusPausedAt', now.toISOString());
     await AsyncStorage.setItem('focusRemainingAtPause', secondsLeft.toString());
-    await AsyncStorage.setItem('pausedTaskId', Array.isArray(taskId) ? taskId[0] : taskId ?? '');
 
     await Notifications.cancelAllScheduledNotificationsAsync();
   } else {
@@ -473,6 +237,103 @@ const handlePauseResume = async () => {
   }
 };
 
+const handleNeedMoreTime = () => {
+  Alert.prompt(
+    'Need More Time?',
+    'Enter extra minutes you want to add:',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Add',
+        onPress: async (text) => {
+          const extraMins = parseInt(text ?? '0');
+          if (!isNaN(extraMins) && extraMins > 0) {
+            const extraSecs = extraMins * 60;
+            const newDuration = focusDuration + extraSecs;
+            const newSecondsLeft = secondsLeft + extraSecs;
+
+            setFocusDuration(newDuration);
+            setSecondsLeft(newSecondsLeft);
+            setIsRunning(true);
+            setEndOptions(false);
+
+            const newStart = new Date(Date.now() - (focusDuration - secondsLeft) * 1000);
+            setStartTime(newStart);
+
+            await AsyncStorage.setItem('focusStart', newStart.toISOString());
+            await AsyncStorage.setItem('focusDuration', newDuration.toString());
+
+            await Notifications.scheduleNotificationAsync({
+              content: {
+                title: '⏰ Time’s Up!',
+                body: 'Your focus timer has ended.',
+                sound: true,
+              },
+              trigger: {
+                seconds: newSecondsLeft,
+                repeats: false,
+                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              },
+            });
+          }
+        },
+      },
+    ],
+    'plain-text',
+    '5' 
+  );
+};
+
+const handleMarkInProgress = async () => {
+  if (!taskId || !isPaused) return;
+
+  const focusSoFar = focusDuration - (remainingAtPause ?? secondsLeft);
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const { data: taskRow, error } = await supabase
+    .from('tasks')
+    .select('current_focus_secs')
+    .eq('id', taskId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching task:', error.message);
+    return;
+  }
+
+  const totalSoFar = (taskRow?.current_focus_secs || 0) + focusSoFar;
+
+  await supabase
+    .from('tasks')
+    .update({ current_focus_secs: totalSoFar,  status: 'in_progress' })
+    .eq('id', taskId);
+
+  Alert.alert('Progress Saved', 'This task is marked as In Progress.');
+
+  setIsRunning(false);
+  setIsPaused(false);
+  setFocusDuration(0);
+  setStartTime(null);
+  setPauseTime(null);
+  setRemainingAtPause(null);
+  setSecondsLeft(0);
+
+  await AsyncStorage.multiRemove([
+    'focusStart',
+    'focusDuration',
+    'focusPaused',
+    'focusPausedAt',
+    'focusRemainingAtPause',
+  ]);
+
+  router.replace('/Dashboard/DailyPlanner');
+};
+
 const handleReset = async () => {
   setIsRunning(false);
   setIsPaused(false);
@@ -487,7 +348,6 @@ const handleReset = async () => {
     'focusPaused',
     'focusPausedAt',
     'focusRemainingAtPause',
-    'pausedTaskId',
   ]);
   await Notifications.cancelAllScheduledNotificationsAsync();
 };
@@ -528,7 +388,23 @@ const handleMarkCompleted = async () => {
     ? taskData.routine
     : 'Others';
 
-   const timeSpent = focusDuration - secondsLeft;
+   const focusSoFar = focusDuration - secondsLeft;
+
+    const { data: taskRow } = await supabase
+      .from('tasks')
+      .select('current_focus_secs')
+      .eq('id', taskId)
+      .single();
+
+const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
+
+    await supabase
+      .from('tasks')
+      .update({
+        status: 'completed',
+        current_focus_secs: totalFocusTime
+      })
+      .eq('id', taskId);
 
   await supabase.from('tasks_completed').insert({
     user_id: user.id,
@@ -539,7 +415,7 @@ const handleMarkCompleted = async () => {
     completed_time: now.toISOString(),
     punctuality_mins: diffMins,
     points_earned: points,
-    time_spent_secs: timeSpent,
+    time_spent_secs: totalFocusTime,
   });
 
   const { data: existing } = await supabase
@@ -579,7 +455,7 @@ const handleMarkCompleted = async () => {
   } else {
     Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
   }
-  await AsyncStorage.multiRemove(['focusStart', 'focusDuration', 'focusPaused', 'focusPausedAt', 'focusRemainingAtPause', 'pausedTaskId']);
+  await AsyncStorage.multiRemove(['focusStart', 'focusDuration', 'focusPaused', 'focusPausedAt', 'focusRemainingAtPause',]);
 
   router.replace('/Dashboard/DailyPlanner');
 };
@@ -624,9 +500,9 @@ const handleMarkCompleted = async () => {
       {isRunning && isPaused && (
         <TouchableOpacity
           onPress={handleMarkCompleted}
-          style={{ backgroundColor: '#4caf50', padding: 12, borderRadius: 8, marginTop: 20 }}
+          style={[styles.button, { backgroundColor: '#5cb85c' }]}
         >
-          <Text style={{ color: 'white', textAlign: 'center',  fontWeight: 'bold'}}>Mark Completed</Text>
+          <Text style={styles.buttonText}>Mark Completed</Text>
         </TouchableOpacity>
       )}
 
@@ -639,6 +515,7 @@ const handleMarkCompleted = async () => {
               style={[styles.button, { marginBottom: 10, backgroundColor: '#4e6ab0' }]}
               onPress={() => {
                 setEndOptions(false);
+                handleNeedMoreTime();
               }}
             >
               <Text style={styles.buttonText}>Need More Time</Text>
@@ -654,14 +531,15 @@ const handleMarkCompleted = async () => {
         </View>
       )}
 
-   {isPaused && (
-      <TouchableOpacity
-        style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
-        onPress={() => router.replace('/Dashboard/DailyPlanner')}
-      >
-        <Text style={styles.buttonText}>Back to Planner</Text>
-      </TouchableOpacity>
-      )}
+{isPaused && !endOptions && (
+  <TouchableOpacity
+    onPress={handleMarkInProgress}
+    style={styles.button}
+  >
+    <Text style={styles.buttonText}>Mark as In Progress</Text>
+  </TouchableOpacity>
+)}
+
       
       {!isRunning && (
       <TouchableOpacity
