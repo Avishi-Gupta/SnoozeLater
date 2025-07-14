@@ -140,6 +140,19 @@ export default function Leaderboard() {
     <View style={styles.container}>
       <Text style={styles.title}>Leaderboard</Text>
 
+{currentUser && userRank !== null && (
+  <>
+    <View style={{ height: 1 }} />
+    <Text style={{ color: 'white', marginBottom: 4, fontSize: 20 }}>
+      Your Rank
+    </Text>
+    <View style={[styles.item, styles.userRow]} key="your-rank-row">
+      <Text style={styles.rank}>{userRank}.</Text>
+      <Text style={styles.name}>{currentUser.name}</Text>
+      <Text style={styles.points}>{currentUser.points} pts</Text>
+    </View>
+  </>
+)}
       <FlatList
         data={topUsers}
         keyExtractor={(item) => item.id}
@@ -148,7 +161,7 @@ export default function Leaderboard() {
             <Text style={styles.rank}>{getRankDisplay(index)}</Text>
             {renderAvatar(item.avatar_url)}
             <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.points}>{item.points} points</Text>
+            <Text style={styles.points}>{item.points} pts</Text>
           </View>
         )}
       />
