@@ -1,16 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
-import {
-    Alert,
-    Button,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from 'react-native';
+import { Alert, Button, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
 
 type UserProfile = {
   id: string;
@@ -58,7 +48,7 @@ export default function SocialPage() {
 
   const fetchFriends = async (uid: string) => {
     const { data, error } = await supabase
-      .from('friends')
+      .from('friend_requests')
       .select('friend_id, profiles!friends_friend_id_fkey(username, avatar_url), updated_at')
       .order('updated_at', { ascending: false });
 
@@ -87,7 +77,6 @@ export default function SocialPage() {
       .order('created_at', { ascending: false });
 
     if (!error && data) {
-      // Map arrays to single objects
       const normalizedData: FriendRequest[] = data.map((req: any) => ({
         ...req,
         requester: req.requester?.[0] || null,

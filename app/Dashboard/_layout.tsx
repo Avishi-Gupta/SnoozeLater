@@ -144,6 +144,16 @@ export default function TabLayout() {
           ),
         }}
       />
+      
+      <Tabs.Screen
+        name="SocialPage"
+        options={{
+          title: 'SocialPage',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="people-circle-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
