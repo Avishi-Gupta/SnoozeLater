@@ -1,7 +1,8 @@
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BarChart, LineChart } from 'react-native-chart-kit';
 
 type TaskStats = {
   category: string;
@@ -16,12 +17,14 @@ export default function TaskInsights() {
   const [stats, setStats] = useState<TaskStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   useEffect(() => {
     fetchTaskInsights();
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
   const fetchCompletedTasks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -29,7 +32,8 @@ export default function TaskInsights() {
     const { data, error } = await supabase
       .from('tasks_completed')
       .select('category, scheduled_time, completed_time, punctuality_mins')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .gte('completed_time', sevenDaysAgo.toISOString());
 
     if (!error && data) {
       generateSuggestions(data);
@@ -48,7 +52,8 @@ export default function TaskInsights() {
     const { data, error } = await supabase
       .from('tasks_completed')
       .select('category, punctuality_mins, points_earned, time_spent_secs')
-      .eq('user_id', user.id);
+      .eq('user_id', user.id)
+      .gte('completed_time', sevenDaysAgo.toISOString());
 
     if (error || !data) {
       console.error('Error fetching task insights:', error?.message);
@@ -102,6 +107,7 @@ export default function TaskInsights() {
   punctuality_mins: number;
 };
 
+
 function generateSuggestions(data: TaskCompleted[]) {
   const categoryCount: Record<string, number> = {};
   let eveningCount = 0;
@@ -113,9 +119,9 @@ function generateSuggestions(data: TaskCompleted[]) {
     categoryCount[category] = (categoryCount[category] || 0) + 1;
 
     const completedHour = new Date(task.completed_time).getHours();
-    if (completedHour >= 18) eveningCount++;
+    if (completedHour >= 20) eveningCount++;
 
-    if (task.punctuality_mins > 15) lateTasks++;
+    if (task.punctuality_mins > 20) lateTasks++;
   });
 
   const suggestionsList: string[] = [];
@@ -123,7 +129,7 @@ function generateSuggestions(data: TaskCompleted[]) {
   // 1. Category Balance
   const assignment = categoryCount['Assignment'] || 0;
   const selfStudy = categoryCount['Self-Study'] || 0;
-  if (assignment > selfStudy + 2) {
+  if (assignment > selfStudy + 5) {
     suggestionsList.push("You're focusing more on Assignments. Try to balance with some Self-Study.");
   }
 
@@ -144,8 +150,26 @@ function generateSuggestions(data: TaskCompleted[]) {
   setSuggestions(suggestionsList);
 }
 
+const chartLabels = stats.map((s) => s.category);
+const chartTaskCounts = stats.map((s) => s.count);
+const chartFocusTimeHours = stats.map((s) => +(s.totalTime / 3600).toFixed(1));
 
-
+const chartConfig = {
+  backgroundColor: '#1E2923',
+  backgroundGradientFrom: '#4e6ab0',
+  backgroundGradientTo: '#355077',
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+  labelColor: () => '#fff',
+  style: {
+    borderRadius: 16,
+  },
+  propsForDots: {
+    r: '4',
+    strokeWidth: '2',
+    stroke: '#ffa726',
+  },
+};
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Task Insights</Text>
@@ -156,14 +180,41 @@ function generateSuggestions(data: TaskCompleted[]) {
           <View key={s.category} style={styles.card}>
             <Text style={styles.title}>{s.category}</Text>
             <Text style={styles.text}>Tasks Completed: {s.count}</Text>
-            <Text style={styles.text}>
-              Avg Punctuality: {s.avgPunctuality.toFixed(1)} min(s)
-            </Text>
+            <Text style={styles.text}>Average Punctuality: {s.avgPunctuality.toFixed(1)} mins</Text>
             <Text style={styles.text}>Points Earned: {s.totalPoints}</Text>
             <Text style={styles.text}>Time Spent: {s.totalTimeHrs} hr(s)</Text>
           </View>
         ))
       )}
+        <View style={styles.suggestionBox}>
+    <Text style={styles.suggestionHeader}>Smart Suggestions</Text>
+    {suggestions.map((s, i) => (
+      <Text key={i} style={styles.suggestionItem}>• {s}</Text>
+    ))}
+  </View>
+            <Text style={styles.chartTitle}>Tasks Completed per Category</Text>
+                <BarChart
+                    data={{
+                        labels: chartLabels,
+                        datasets: [{ data: chartTaskCounts }],
+                    }}
+                    width={Dimensions.get('window').width - 30}
+                    height={220}
+                    chartConfig={chartConfig}
+                    style={styles.chart} yAxisLabel={''} yAxisSuffix={''}                />
+
+                <Text style={styles.chartTitle}>Total Time Spent (hrs) per Category</Text>
+                <LineChart
+                data={{
+                    labels: chartLabels,
+                    datasets: [{ data: chartFocusTimeHours }],
+                }}
+                width={Dimensions.get('window').width - 30}
+                height={220}
+                chartConfig={chartConfig}
+                bezier
+                style={styles.chart}
+                />
 
             <TouchableOpacity
               style={[styles.button, { backgroundColor: '#4e6ab0', margin: 30 }]}
@@ -171,16 +222,6 @@ function generateSuggestions(data: TaskCompleted[]) {
             >
               <Text style={styles.buttonText}>Back to Sleep Insights</Text>
             </TouchableOpacity>
-            {suggestions.length > 0 && (
-
-  <View style={styles.suggestionBox}>
-    <Text style={styles.suggestionHeader}>Smart Suggestions</Text>
-    {suggestions.map((s, i) => (
-      <Text key={i} style={styles.suggestionItem}>• {s}</Text>
-    ))}
-  </View>
-)}
-
     </ScrollView>
   );
 }
@@ -262,6 +303,18 @@ suggestionItem: {
   fontSize: 15,
   color: '#444',
   marginBottom: 5,
+},
+chart: {
+  marginVertical: 8,
+  borderRadius: 16,
+  alignSelf: 'center',
+},
+chartTitle: {
+  textAlign: 'center',
+  fontSize: 16,
+  fontWeight: 'bold',
+  color: 'white',
+  marginTop: 20,
 },
 
 });
