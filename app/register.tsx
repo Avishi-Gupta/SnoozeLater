@@ -64,9 +64,9 @@ export default function Register() {
               <Text style={styles.buttonText}>Register</Text>
             </TouchableOpacity>
       {message ? <Text>{message}</Text> : null}
-      <TouchableOpacity onPress={() => router.push('/register')}>
-              <Text style={[styles.buttonText, { marginTop: 12 }]}>Don't have an account? Sign up</Text>
-            </TouchableOpacity>
+      <TouchableOpacity onPress={() => router.push('/login')}>
+        <Text style={[styles.buttonText, { marginTop: 12 }]}>Already have an account? Login</Text>
+      </TouchableOpacity>
     </View>
   );
 }
