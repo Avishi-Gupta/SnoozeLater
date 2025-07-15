@@ -2,14 +2,13 @@ import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   Image,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 type UserProfile = {
@@ -253,7 +252,9 @@ export default function SocialPage() {
         placeholderTextColor="#999"
         autoCapitalize="none"
       />
-      <Button title="Send Friend Request" onPress={handleAddFriend} />
+      <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
+        <Text style={styles.buttonText}>Send Friend Request</Text>
+      </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Your Friends</Text>
       <FlatList
@@ -321,7 +322,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    marginTop: 24,
+    marginTop: 10,
     marginBottom: 8,
     color: 'white',
     fontWeight: '600',
@@ -366,5 +367,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#666',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+    addButton: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '60%',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+    alignSelf: 'center',
+  },
+    buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
