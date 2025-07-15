@@ -142,7 +142,28 @@ export default function Leaderboard() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Leaderboard</Text>
-
+      {currentUser && userRank !== null && (
+          <View
+    style={{
+      borderWidth: 2,
+      borderColor: '#fff',
+      borderRadius: 10,
+      padding: 10,
+      marginBottom: 12,
+      backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    }}
+  >
+          <Text style={{ color: 'white', marginBottom: 4, fontSize: 20, textAlign: 'center' }}>
+            Your Rank
+          </Text>
+          <View style={[styles.item, styles.userRow]}>
+            <Text style={styles.rank}>{getRankDisplay(userRank - 1)}</Text>
+            {renderAvatar(currentUser.avatar_url)}
+            <Text style={styles.name}>{currentUser.name}</Text>
+            <Text style={styles.points}>{currentUser.points} pts</Text>
+          </View>
+        </View>
+      )}
       <FlatList
         data={topUsers}
         keyExtractor={(item) => item.id}
@@ -155,20 +176,6 @@ export default function Leaderboard() {
           </View>
         )}
       />
-
-      {currentUser && userRank !== null && (
-        <>
-          <Text style={{ color: 'white', marginBottom: 4, fontSize: 16 }}>
-            Your Rank
-          </Text>
-          <View style={[styles.item, styles.userRow]}>
-            <Text style={styles.rank}>{userRank}.</Text>
-            {renderAvatar(currentUser.avatar_url)}
-            <Text style={styles.name}>{currentUser.name}</Text>
-            <Text style={styles.points}>{currentUser.points} pts</Text>
-          </View>
-        </>
-      )}
     </View>
   );
 }
@@ -221,14 +228,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     elevation: 2,
   },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffe082',
-    padding: 10,
-    marginVertical: 6,
-    borderRadius: 8,
-  },
+userRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: 'rgba(255, 255, 255, 0.15)',
+  padding: 12,
+  marginVertical: 8,
+  // borderRadius: 10,
+  // borderWidth: 2,
+  // borderColor: '#ffffffcc',
+  // shadowColor: '#000',
+  // shadowOffset: { width: 0, height: 2 },
+  // shadowOpacity: 0.3,
+  // shadowRadius: 4,
+  elevation: 4,
+},
   rank: {
     fontSize: 18,
     width: 40,

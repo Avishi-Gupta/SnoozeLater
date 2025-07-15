@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BarChart, LineChart } from 'react-native-chart-kit';
+import { BarChart, LineChart, PieChart } from 'react-native-chart-kit';
 
 type TaskStats = {
   category: string;
@@ -17,14 +17,25 @@ export default function TaskInsights() {
   const [stats, setStats] = useState<TaskStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [taskPoints, setTaskPoints] = useState<number | null>(null);
+  const [avgPunctualityOverall, setAvgPunctualityOverall] = useState<number | null>(null);
+const [avgTimeSpent, setAvgTimeSpent] = useState<number | null>(null);
+const [punctualityByHour, setPunctualityByHour] = useState<number[]>([]);
+const [punctualityByTimeOfDay, setPunctualityByTimeOfDay] = useState<number[]>([]);
+
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-  useEffect(() => {
-    fetchTaskInsights();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTaskInsights();
+        fetchPoints();
+  }, [])
+);
 
-useEffect(() => {
+
+useFocusEffect(
+  useCallback(() => {
   const fetchCompletedTasks = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -41,8 +52,30 @@ useEffect(() => {
   };
 
   fetchCompletedTasks();
-}, []);
+}, []));
 
+async function fetchPoints() {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData?.user) {
+    console.error('Error fetching user:', userError?.message);
+    return;
+  }
+
+  const userId = userData.user.id;
+
+  const { data, error } = await supabase
+    .from('points')
+    .select('task_points')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching task points:', error.message);
+  } else {
+    setTaskPoints(data.task_points);
+  }
+}
   async function fetchTaskInsights() {
     setLoading(true);
 
@@ -51,7 +84,7 @@ useEffect(() => {
 
     const { data, error } = await supabase
       .from('tasks_completed')
-      .select('category, punctuality_mins, points_earned, time_spent_secs')
+      .select('category, punctuality_mins, points_earned, time_spent_secs, scheduled_time, completed_time')
       .eq('user_id', user.id)
       .gte('completed_time', sevenDaysAgo.toISOString());
 
@@ -79,9 +112,43 @@ useEffect(() => {
       grouped[category].avgPunctuality += task.punctuality_mins;
       grouped[category].totalPoints += task.points_earned;
       grouped[category].totalTime += task.time_spent_secs ?? 0;
-    }
-    
 
+     
+      let totalTaskCount = data.length;
+      const timeOfDayBuckets: { [key: string]: number[] } = {
+        Morning: [],
+        Afternoon: [],
+        Evening: [],
+        Night: [],
+        };
+
+    let totalPunctuality = 0;
+    let totalFocusTime = 0;
+    for (const task of data) {
+    const hour = new Date(task.scheduled_time).getHours();
+    if (hour >= 5 && hour <= 11) {
+        timeOfDayBuckets.Morning.push(task.punctuality_mins);
+    } else if (hour >= 12 && hour <= 16) {
+        timeOfDayBuckets.Afternoon.push(task.punctuality_mins);
+    } else if (hour >= 17 && hour <= 20) {
+        timeOfDayBuckets.Evening.push(task.punctuality_mins);
+    } else {
+        timeOfDayBuckets.Night.push(task.punctuality_mins);
+    }
+
+    totalPunctuality += task.punctuality_mins;
+    totalFocusTime += task.time_spent_secs ?? 0;
+    }
+    const avgByTimeOfDay = ['Morning', 'Afternoon', 'Evening', 'Night'].map((label) => {
+    const values = timeOfDayBuckets[label];
+    return values.length > 0
+        ? values.reduce((a, b) => a + b, 0) / values.length
+        : 0;
+    });
+setPunctualityByTimeOfDay(avgByTimeOfDay);
+setAvgTimeSpent(totalFocusTime / totalTaskCount / 3600);
+}
+    
     const finalStats = Object.values(grouped).map((entry) => ({
       ...entry,
       avgPunctuality: entry.avgPunctuality / entry.count,
@@ -147,61 +214,77 @@ function generateSuggestions(data: TaskCompleted[]) {
     suggestionsList.push("You've completed many tasks this week. Remember to rest or reward yourself!");
   }
 
+    if (avgPunctualityOverall !== null && avgPunctualityOverall > 20) {
+    suggestionsList.push("Your average punctuality is low. Try starting closer to the scheduled time.");
+    }
+
+    if (avgTimeSpent !== null && avgTimeSpent < 2) {
+      suggestionsList.push("You spend less than 2 hours per task on average. Consider dedicating more time.");
+    }
+
+
   setSuggestions(suggestionsList);
 }
+
+const pieData = stats.map((s, i) => ({
+  name: s.category,
+  population: s.count,
+  color: ['#ffa600', '#bc5090', '#003f5c', '#58508d'][i % 4], // feel free to expand
+  legendFontColor: '#fff',
+  legendFontSize: 12,
+}));
 
 const chartLabels = stats.map((s) => s.category);
 const chartTaskCounts = stats.map((s) => s.count);
 const chartFocusTimeHours = stats.map((s) => +(s.totalTime / 3600).toFixed(1));
 
 const chartConfig = {
-  backgroundColor: '#1E2923',
-  backgroundGradientFrom: '#4e6ab0',
-  backgroundGradientTo: '#355077',
-  decimalPlaces: 0,
-  color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-  labelColor: () => '#fff',
-  style: {
-    borderRadius: 16,
-  },
-  propsForDots: {
-    r: '4',
-    strokeWidth: '2',
-    stroke: '#ffa726',
-  },
+    backgroundColor: '#1E2923',
+    backgroundGradientFrom: '#4e6ab0',
+    backgroundGradientTo: '#355077',
+    decimalPlaces: 1,
+    color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
+    labelColor: () => '#fff',
+    style: {
+        borderRadius: 16,
+    },
+    propsForDots: {
+        r: '4',
+        strokeWidth: '2',
+        stroke: '#ffa726',
+    },
+    propsForLabels: {
+        fontSize: 9, 
+    },
 };
   return (
     <ScrollView style={styles.container}>
       <Text style={styles.header}>Task Insights</Text>
-      {stats.length === 0 ? (
-        <Text style={styles.noData}>No completed tasks yet.</Text>
-      ) : (
-        stats.map((s) => (
-          <View key={s.category} style={styles.card}>
-            <Text style={styles.title}>{s.category}</Text>
-            <Text style={styles.text}>Tasks Completed: {s.count}</Text>
-            <Text style={styles.text}>Average Punctuality: {s.avgPunctuality.toFixed(1)} mins</Text>
-            <Text style={styles.text}>Points Earned: {s.totalPoints}</Text>
-            <Text style={styles.text}>Time Spent: {s.totalTimeHrs} hr(s)</Text>
-          </View>
-        ))
-      )}
+      <Text style={styles.stat}>
+        Avg Time per Task: {avgTimeSpent !== null ? avgTimeSpent.toFixed(1) + ' hrs' : 'No data'}
+    </Text>
+      <Text style={styles.stat}>
+        Task Points: {taskPoints !== null ? taskPoints : 'No data'}
+      </Text>
         <View style={styles.suggestionBox}>
-    <Text style={styles.suggestionHeader}>Smart Suggestions</Text>
+    <Text style={styles.suggestionHeader}>Weekly Suggestions</Text>
     {suggestions.map((s, i) => (
       <Text key={i} style={styles.suggestionItem}>• {s}</Text>
     ))}
   </View>
-            <Text style={styles.chartTitle}>Tasks Completed per Category</Text>
-                <BarChart
-                    data={{
-                        labels: chartLabels,
-                        datasets: [{ data: chartTaskCounts }],
-                    }}
-                    width={Dimensions.get('window').width - 30}
+
+                <Text style={styles.chartTitle}>Task Category Distribution</Text>
+                    <PieChart
+                    data={pieData}
+                    width={Dimensions.get('window').width - 20}
                     height={220}
                     chartConfig={chartConfig}
-                    style={styles.chart} yAxisLabel={''} yAxisSuffix={''}                />
+                    accessor="population"
+                    backgroundColor="transparent"
+                    paddingLeft="15"
+                    absolute
+                    />
+
 
                 <Text style={styles.chartTitle}>Total Time Spent (hrs) per Category</Text>
                 <LineChart
@@ -209,13 +292,40 @@ const chartConfig = {
                     labels: chartLabels,
                     datasets: [{ data: chartFocusTimeHours }],
                 }}
-                width={Dimensions.get('window').width - 30}
+                width={Dimensions.get('window').width - 20}
                 height={220}
                 chartConfig={chartConfig}
                 bezier
                 style={styles.chart}
                 />
 
+                <Text style={styles.chartTitle}>Avg Punctuality by Time of Day</Text>
+                    <BarChart
+                    data={{
+                        labels: ['Morning', 'Afternoon', 'Evening', 'Night'],
+                        datasets: [{ data: punctualityByTimeOfDay }],
+                    }}
+                    width={Dimensions.get('window').width - 20}
+                    height={220}
+                    chartConfig={chartConfig}
+                    yAxisLabel=""
+                    yAxisSuffix=" min"
+                    style={styles.chart}
+                    />
+
+                          {stats.length === 0 ? (
+        <Text style={styles.noData}>No completed tasks yet.</Text>
+      ) : (
+        stats.map((s) => (
+          <View key={s.category} style={styles.card}>
+            <Text style={styles.title}>{s.category}</Text>
+            <Text style={styles.text}>Tasks Completed: {s.count}</Text>
+            {/* <Text style={styles.text}>Average Punctuality: {s.avgPunctuality.toFixed(1)} mins</Text>
+            <Text style={styles.text}>Points Earned: {s.totalPoints}</Text> */}
+            <Text style={styles.text}>Time Spent: {s.totalTimeHrs} hr(s)</Text>
+          </View>
+        ))
+      )}
             <TouchableOpacity
               style={[styles.button, { backgroundColor: '#4e6ab0', margin: 30 }]}
               onPress={() => router.replace('./Dashboard/WeeklyInsights')}
@@ -244,6 +354,7 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 20,
     marginTop: 30,
+    textAlign: 'center',
   },
   noData: {
     fontStyle: 'italic',
@@ -254,7 +365,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 12,
     padding: 16,
-    marginBottom: 15,
+    marginBottom: 5,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowOffset: { width: 0, height: 2 },
@@ -266,6 +378,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#35d',
     marginBottom: 8,
+    alignContent: 'center',
   },
   text: {
     fontSize: 15,
@@ -277,6 +390,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 10,
     marginVertical: 10,
+    marginBottom: 20,
     width: '60%',
     alignSelf: 'center',
   },
@@ -316,5 +430,12 @@ chartTitle: {
   color: 'white',
   marginTop: 20,
 },
-
+  stat: {
+    fontSize: 17,
+    color: 'white',
+    marginBottom: 8,
+    fontWeight: '500',
+    textAlign: 'center',
+  },
 });
+

@@ -21,12 +21,11 @@ export default function FocusTimer() {
   useKeepAwake();
   const router = useRouter();
   const { taskId, taskTime } = useLocalSearchParams();
-
   const [inputMinutes, setInputMinutes] = useState('25');
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [endOptions, setEndOptions] = useState(false);  
+  const [endOptions, setEndOptions] = useState(false); 
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -34,6 +33,43 @@ export default function FocusTimer() {
   const [startTime, setStartTime] = useState<Date | null>(null);
   const [pauseTime, setPauseTime] = useState<Date | null>(null);
   const [remainingAtPause, setRemainingAtPause] = useState<number | null>(null);
+
+  // const hasPromptedBreakRef = useRef(false);
+  // const [showBreakButton, setShowBreakButton] = useState(false); 
+  
+//   useEffect(() => {
+//   const restoreAfterBreak = async () => {
+//     const fromBreak = await AsyncStorage.getItem('fromBreak');
+//     if (fromBreak === 'true') {
+//       const taskIdStored = await AsyncStorage.getItem('break_task_id');
+//       const duration = await AsyncStorage.getItem('break_focus_duration');
+//       const seconds = await AsyncStorage.getItem('break_seconds_left');
+//       const storedStart = await AsyncStorage.getItem('break_start_time');
+//       const taskTimeStr = await AsyncStorage.getItem('break_task_time');
+    
+//       if (taskIdStored && duration && seconds && storedStart && taskTimeStr) {
+//         setTaskId(taskIdStored);
+//         setFocusDuration(parseInt(duration));
+//         setSecondsLeft(parseInt(seconds));
+//         setStartTime(new Date(storedStart));
+//         setIsRunning(true);
+//         setIsPaused(true);
+//         setTaskTime(new Date(taskTimeStr));
+//       }
+
+//       await AsyncStorage.multiRemove([
+//         'fromBreak',
+//         'break_task_id',
+//         'break_focus_duration',
+//         'break_seconds_left',
+//         'break_start_time',
+//         'break_task_time',
+//       ]);
+//     }
+//   };
+
+//   restoreAfterBreak();
+// }, []);
 
 useEffect(() => {
   const restoreTimer = async () => {
@@ -95,6 +131,14 @@ useEffect(() => {
 
       setSecondsLeft(remaining);
 
+      if (elapsed > 0 && elapsed % 3000 === 0) {
+        Alert.alert(
+          '⏳ Time for a Break?',
+          'You’ve been focusing for 50 minutes. Pause, stretch, breathe, and rest your eyes!',
+          [{ text: 'OK' }]
+        );
+      }
+
       if (remaining <= 0) {
         clearInterval(timerRef.current!);
         await AsyncStorage.multiRemove([
@@ -138,22 +182,35 @@ const playAlarm = async () => {
     await soundRef.current.replayAsync();
   }
   Vibration.vibrate([500, 1000, 500]);
-  // await Notifications.scheduleNotificationAsync({
-  //   content: {
-  //     title: '⏰ Time’s Up!',
-  //     body: 'Your focus timer has ended.',
-  //     sound: true,
-  //   },
-  //   trigger: null,
-  // });
 };
 
 const handleStart = async () => {
-  await supabase.from('tasks').update({
-  start_time: new Date().toISOString(),
-  status: 'in_progress',
-}).eq('id', taskId);
+    const { data: existingTask, error } = await supabase
+    .from('tasks')
+    .select('start_time')
+    .eq('id', taskId)
+    .single();
 
+  if (error) {
+    console.error('Failed to fetch task', error.message);
+    return;
+  }
+
+  if (!existingTask.start_time) {
+    await supabase
+      .from('tasks')
+      .update({
+        start_time: new Date().toISOString(),
+        status: 'in_progress',
+      })
+      .eq('id', taskId);
+  } else {
+
+    await supabase
+      .from('tasks')
+      .update({ status: 'in_progress' })
+      .eq('id', taskId);
+  }
   await AsyncStorage.multiRemove([
   'focusStart',
   'focusDuration',
@@ -195,6 +252,13 @@ const handleStart = async () => {
 
 const handlePauseResume = async () => {
   if (!isRunning) return;
+
+  // if (!isPaused) {
+  //   setShowBreakButton(true);
+  // } else {
+  //   hasPromptedBreakRef.current = false; 
+  //   setShowBreakButton(false);
+  // }
 
   if (!isPaused) {
     const now = new Date();
@@ -380,8 +444,10 @@ const handleMarkCompleted = async () => {
   }
 
   const scheduled = new Date(taskTime as string);
+  const started = new Date(taskData.start_time);
   const now = new Date();
-  const diffMins = Math.floor((now.getTime() - scheduled.getTime()) / 60000);
+
+  const diffMins = Math.floor((started.getTime() - scheduled.getTime()) / 60000);
   const points = diffMins <= 5 ? 500 : Math.max(0, 500 - diffMins * 10);
 
     const category = ['Assignment', 'Exam Preparation', 'Self-Study'].includes(taskData.routine)
@@ -481,6 +547,7 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
         <>
           <Text style={styles.timer}>{formatTime(secondsLeft)}</Text>
 
+          <View style={styles.timeRow}>
           <TouchableOpacity
             style={[styles.button, { backgroundColor: isPaused ? 'purple' : 'maroon' }]}
             onPress={handlePauseResume}
@@ -494,9 +561,10 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
           >
             <Text style={styles.buttonText}>Reset</Text>
           </TouchableOpacity>
+          </View>
         </>
       )}
-
+    
       {isRunning && isPaused && (
         <TouchableOpacity
           onPress={handleMarkCompleted}
@@ -534,14 +602,31 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
 {isPaused && !endOptions && (
   <TouchableOpacity
     onPress={handleMarkInProgress}
-    style={styles.button}
+    style={[styles.button, { backgroundColor: 'orange' }]}
   >
     <Text style={styles.buttonText}>Mark as In Progress</Text>
   </TouchableOpacity>
 )}
 
-      
-      {!isRunning && (
+{/* {isPaused && showBreakButton && (
+  <TouchableOpacity
+    style={[styles.button, { backgroundColor: 'lightpink' }]}
+    onPress={async () => {
+    await AsyncStorage.setItem('fromBreak', 'true');
+    await AsyncStorage.setItem('break_task_id', Array.isArray(taskId) ? taskId[0] : (taskId ?? ''));
+    await AsyncStorage.setItem('break_focus_duration', focusDuration.toString());
+    await AsyncStorage.setItem('break_seconds_left', secondsLeft.toString());
+    await AsyncStorage.setItem('break_start_time', startTime?.toISOString() ?? '');
+    await AsyncStorage.setItem('break_task_time', taskTime?.toString() ?? '');
+
+    setShowBreakButton(false);
+    router.push({ pathname: '/Break', params: { fromBreak: 'true' } });
+  }}
+  >
+    <Text style={styles.buttonText}>Take a Break</Text>
+  </TouchableOpacity>
+)} */}
+   {!isRunning && (
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
         onPress={() => router.replace('/Dashboard/DailyPlanner')}
@@ -579,6 +664,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 30,
     borderRadius: 10,
     marginVertical: 10,
+    marginRight: 10,
   },
   buttonText: {
     color: 'white',
@@ -614,5 +700,12 @@ popupContainer: {
   borderRadius: 12,
   alignItems: 'center',
   width: '80%',
+},
+timeRow: {
+  flexDirection: 'row',
+  justifyContent: 'center',
+  alignItems: 'center',
+  width: 'auto',
+  marginBottom: 3,
 },
 });

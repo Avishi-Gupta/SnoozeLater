@@ -2,8 +2,8 @@ import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 
@@ -16,6 +16,7 @@ type Task = {
   start_time?: string | null;
   status?: 'pending' | 'in_progress' | 'completed';
   current_focus_secs?: number;
+  name?: string;
 };
 
 export default function PlannerScreen() {
@@ -29,8 +30,8 @@ export default function PlannerScreen() {
   const [repeat, setRepeat] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [customTask, setCustomTask] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [open, setOpen] = useState(false);
-  // const [pausedTaskId, setPausedTaskId] = useState<string | null>(null);
   const [taskOptions, setTaskOptions] = useState([
     { label: 'Assignment', value: 'Assignment' },
     { label: 'Exam Preparation', value: 'Exam Preparation' },
@@ -99,6 +100,7 @@ export default function PlannerScreen() {
           repeat: task.repeat ?? false,
           start_time: task.start_time ?? null,
           status: task.status ?? 'pending',
+          name: task.name ?? null,
           current_focus_secs: task.current_focus_secs ?? 0,
           ...(task.notifId !== undefined && { notif_id: task.notifId }),
         });
@@ -110,17 +112,11 @@ export default function PlannerScreen() {
     }
   }, [tasks]);
 
-// useEffect(() => {
-//   const getPausedTaskId = async () => {
-//     const id = await AsyncStorage.getItem('pausedTaskId');
-//     setPausedTaskId(id);
-//   };
-//   getPausedTaskId();
-// }, []);
-
-  useEffect(() => {
-    fetchSleepTimes();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchSleepTimes();
+    }, [])
+  );
 
   const fetchSleepTimes = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -234,6 +230,7 @@ export default function PlannerScreen() {
         start_time: null,
         status: 'pending',
         current_focus_secs: 0,
+        name: displayName.trim() || undefined, 
       };
 
     const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
@@ -241,6 +238,7 @@ export default function PlannerScreen() {
 
     setSelectedCategory('');
     setCustomTask('');
+    setDisplayName('');
     setSelectedTime(null);
     setRepeat(false);
   }
@@ -299,6 +297,16 @@ export default function PlannerScreen() {
           placeholderTextColor="#FFFFFF"
         />
       )}
+{selectedCategory !== 'Others' && (
+  <TextInput
+  placeholder="Task Description (optional)"
+  value={displayName}
+  onChangeText={setDisplayName}
+  style={styles.input}
+  placeholderTextColor="#CCCCCC"
+/>
+)}
+    
 
       <TouchableOpacity onPress={() => setChooseTime(true)} style={styles.input}>
         <Text style={{ color: '#fff' }}>{formatTime(selectedTime)}</Text>
@@ -347,10 +355,6 @@ export default function PlannerScreen() {
           <Text style={styles.buttonText}>Wake Time: {formatTime(wakeUpTime)}</Text>
         </TouchableOpacity>
       </View>
-  
-      <TouchableOpacity onPress={fetchSleepTimes}>
-        <Text style={{ color: 'white' }}>🔄 Refresh</Text>
-      </TouchableOpacity>
 
       {/* <TouchableOpacity onPress={cancelAllNotifications}>
         <Text style={{ color: 'white' }}>🔁 Reset All Notifications</Text>
@@ -363,6 +367,7 @@ export default function PlannerScreen() {
           <View style={styles.task}>
             <Text style={styles.taskText}>
               {formatTime(item.time)} : {item.routine}
+              {item.name ? ` (${item.name})` : ''}
             </Text>
 
               <TouchableOpacity
@@ -508,7 +513,7 @@ timeLabel: {
     paddingHorizontal: 12,
     borderRadius: 8,
     marginBottom: 15,
-    width: '70%',
+    // width: '60%',
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.15,
