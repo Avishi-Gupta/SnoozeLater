@@ -1,6 +1,16 @@
 import { supabase } from '@/lib/supabase';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
+import {
+  Alert,
+  Button,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 type UserProfile = {
   id: string;
@@ -20,7 +30,7 @@ type FriendRequest = {
 
 type Friend = {
   id: string;
-  name: string;
+  username: string;
   avatar_url?: string | null;
 };
 
@@ -35,34 +45,32 @@ export default function SocialPage() {
     fetchUserAndData();
   }, []);
 
-  const fetchUserAndData = async () => {
+  async function fetchUserAndData() {
     const {
       data: { user },
+      error,
     } = await supabase.auth.getUser();
-    if (!user) return;
+
+    if (error) {
+      console.error('Error fetching user:', error);
+      return;
+    }
+
+    if (!user) {
+      console.log('No user logged in');
+      return;
+    }
 
     setUserId(user.id);
-    fetchFriends(user.id);
-    fetchFriendRequests(user.id);
-  };
 
-  const fetchFriends = async (uid: string) => {
-    const { data, error } = await supabase
-      .from('friend_requests')
-      .select('friend_id, profiles!friends_friend_id_fkey(username, avatar_url), updated_at')
-      .order('updated_at', { ascending: false });
+    // Fetch friend requests and friends
+    await fetchFriendRequests(user.id);
+    await fetchFriends(user.id);
+  }
 
-    if (!error && data) {
-      const formatted: Friend[] = data.map((f: any) => ({
-        id: f.friend_id,
-        name: f.profiles?.username || 'Unknown',
-        avatar_url: f.profiles?.avatar_url || null,
-      }));
-      setFriends(formatted);
-    }
-  };
+  async function fetchFriendRequests(uid: string) {
+    if (!uid) return;
 
-  const fetchFriendRequests = async (uid: string) => {
     const { data, error } = await supabase
       .from('friend_requests')
       .select(`
@@ -70,35 +78,108 @@ export default function SocialPage() {
         requester_id,
         addressee_id,
         status,
-        requester:profiles!friend_requests_requester_id_fkey(id, username, email, avatar_url),
-        addressee:profiles!friend_requests_addressee_id_fkey(id, username, email, avatar_url)
+        requester:profiles!friend_requests_requester_id_fkey (
+          id,
+          username,
+          email,
+          avatar_url
+        ),
+        addressee:profiles!friend_requests_addressee_id_fkey (
+          id,
+          username,
+          email,
+          avatar_url
+        )
       `)
       .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      const normalizedData: FriendRequest[] = data.map((req: any) => ({
-        ...req,
-        requester: req.requester?.[0] || null,
-        addressee: req.addressee?.[0] || null,
-      }));
-
-      const incoming = normalizedData.filter(
-        (req) => req.addressee_id === uid && req.status === 'pending'
-      );
-      const outgoing = normalizedData.filter(
-        (req) => req.requester_id === uid && req.status === 'pending'
-      );
-
-      setIncomingRequests(incoming);
-      setOutgoingRequests(outgoing);
+    if (error) {
+      console.error('Error fetching friend requests:', error);
+      return;
     }
-  };
 
-  const handleAddFriend = async () => {
+    if (!data) {
+      console.log('No friend requests found');
+      setIncomingRequests([]);
+      setOutgoingRequests([]);
+      return;
+    }
+
+    console.log('Friend requests raw data:', data);
+
+    // Normalize requester and addressee (they come as arrays)
+    const normalizedData: FriendRequest[] = data.map((req: any) => ({
+      ...req,
+      requester: Array.isArray(req.requester) ? req.requester[0] : req.requester || null,
+      addressee: Array.isArray(req.addressee) ? req.addressee[0] : req.addressee || null,
+    }));
+
+    const incoming = normalizedData.filter(
+      (req) => req.addressee_id === uid && req.status === 'pending'
+    );
+    const outgoing = normalizedData.filter(
+      (req) => req.requester_id === uid && req.status === 'pending'
+    );
+
+    console.log('Incoming requests:', incoming);
+    console.log('Outgoing requests:', outgoing);
+
+    setIncomingRequests(incoming);
+    setOutgoingRequests(outgoing);
+  }
+
+  async function fetchFriends(uid: string) {
+    if (!uid) return;
+
+    // Fetch all friend requests where status = accepted and user is either requester or addressee
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select(`
+        id,
+        requester_id,
+        addressee_id,
+        status,
+        requester:profiles!friend_requests_requester_id_fkey (id, username, avatar_url),
+        addressee:profiles!friend_requests_addressee_id_fkey (id, username, avatar_url)
+      `)
+      .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
+      .eq('status', 'accepted')
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching friends:', error);
+      setFriends([]);
+      return;
+    }
+
+    if (!data) {
+      setFriends([]);
+      return;
+    }
+
+    // Map accepted friends to Friend[] array
+    const friendList: Friend[] = data.map((req: any) => {
+      const isRequester = req.requester_id === uid;
+      const friendProfile = isRequester
+        ? (Array.isArray(req.addressee) ? req.addressee[0] : req.addressee)
+        : (Array.isArray(req.requester) ? req.requester[0] : req.requester);
+
+      return {
+        id: friendProfile?.id || 'unknown',
+        username: friendProfile?.username || 'Unknown',
+        avatar_url: friendProfile?.avatar_url || null,
+      };
+    });
+
+    setFriends(friendList);
+  }
+
+  async function handleAddFriend() {
     const input = friendInput.trim();
     if (!input || !userId) return;
 
+    // Find user by username or email
     const { data: targetUser, error } = await supabase
       .from('profiles')
       .select('id, username, email')
@@ -115,44 +196,59 @@ export default function SocialPage() {
       return;
     }
 
-    const { data: existing } = await supabase
+    // Check if friend request or friendship already exists
+    const { data: existing, error: existingErr } = await supabase
       .from('friend_requests')
       .select('id')
-      .or(`
-        and(requester_id.eq.${userId},addressee_id.eq.${targetUser.id}),
-        and(requester_id.eq.${targetUser.id},addressee_id.eq.${userId})
-      `)
+      .or(`and(requester_id.eq.${userId},addressee_id.eq.${targetUser.id}),and(requester_id.eq.${targetUser.id},addressee_id.eq.${userId})`)
       .single();
+
+    if (existingErr) {
+      console.error('Error checking existing requests:', existingErr);
+      Alert.alert('Failed to check existing requests');
+      return;
+    }
 
     if (existing) {
       Alert.alert('Friend request already exists or you are already friends');
       return;
     }
 
+    // Insert new friend request
     const { error: insertErr } = await supabase.from('friend_requests').insert({
       requester_id: userId,
       addressee_id: targetUser.id,
       status: 'pending',
     });
 
-    if (!insertErr) {
-      Alert.alert('Friend request sent!');
-      setFriendInput('');
-      fetchFriendRequests(userId);
+    if (insertErr) {
+      Alert.alert('Failed to send friend request');
+      console.error('Insert error:', insertErr);
+      return;
     }
-  };
 
-  const handleRespond = async (id: string, action: 'accepted' | 'rejected') => {
-    await supabase
+    Alert.alert('Friend request sent!');
+    setFriendInput('');
+    fetchFriendRequests(userId);
+  }
+
+  async function handleRespond(id: string, action: 'accepted' | 'rejected') {
+    const { error } = await supabase
       .from('friend_requests')
       .update({ status: action, updated_at: new Date().toISOString() })
       .eq('id', id);
 
+    if (error) {
+      Alert.alert('Failed to update friend request');
+      console.error('Update error:', error);
+      return;
+    }
+
     fetchFriends(userId);
     fetchFriendRequests(userId);
-  };
+  }
 
-  const renderAvatar = (avatar_url?: string | null) => {
+  function renderAvatar(avatar_url?: string | null) {
     if (avatar_url) {
       return <Image source={{ uri: avatar_url }} style={styles.avatar} />;
     }
@@ -161,7 +257,7 @@ export default function SocialPage() {
         <Text style={{ color: '#fff' }}>?</Text>
       </View>
     );
-  };
+  }
 
   return (
     <View style={styles.container}>
@@ -173,6 +269,7 @@ export default function SocialPage() {
         value={friendInput}
         onChangeText={setFriendInput}
         placeholderTextColor="#999"
+        autoCapitalize="none"
       />
       <Button title="Send Friend Request" onPress={handleAddFriend} />
 
@@ -183,7 +280,7 @@ export default function SocialPage() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             {renderAvatar(item.avatar_url)}
-            <Text style={styles.text}>{item.name}</Text>
+            <Text style={styles.text}>{item.username}</Text>
           </View>
         )}
         ListEmptyComponent={<Text style={styles.empty}>No friends yet.</Text>}
@@ -238,12 +335,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 16,
     color: 'white',
+    fontWeight: 'bold',
   },
   sectionTitle: {
     fontSize: 18,
     marginTop: 24,
     marginBottom: 8,
     color: 'white',
+    fontWeight: '600',
   },
   input: {
     backgroundColor: '#fff',

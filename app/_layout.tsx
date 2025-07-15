@@ -32,11 +32,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
+import { setupNotifications } from '@/lib/setupNotifications';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
+    setupNotifications();
+
     const checkLogin = async () => {
       const token = await AsyncStorage.getItem('token');
       setIsLoggedIn(!!token);

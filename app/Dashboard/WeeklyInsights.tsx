@@ -53,19 +53,46 @@ export default function WeeklyInsights() {
       return;
     }
 
-    const totalSleep = data.reduce((sum, item) => sum + item.duration_slept, 0);
+    const durations = data.map((d) => d.duration_slept);
+    const totalSleep = durations.reduce((sum, val) => sum + val, 0);
     const average = totalSleep / data.length;
     setAverageSleep(average);
-    
-    if (average >= 10) {
-      setSuggestion('You might be oversleeping. Aim for 7-9 hours per night for optimal health.');
+
+    const mean = average;
+    const variance =
+      durations.reduce((sum, val) => sum + (val - mean) ** 2, 0) / durations.length;
+    const stdDev = Math.sqrt(variance);
+
+    const lateNights = data.filter((d) => {
+      const hour = new Date(d.sleep_time).getHours();
+      return hour >= 1;
+    }).length;
+
+    const suggestions: string[] = [];
+
+    if (average >= 9.5) {
+      suggestions.push("You're averaging a lot of sleep — make sure it isn't affecting your alertness during the day.");
     } else if (average >= 8) {
-      setSuggestion('Great job! You’re getting enough rest. Keep it up!');
-    } else if (average >= 6) {
-      setSuggestion('You’re doing okay, but try to get a bit more sleep.');
+      suggestions.push("Great job! You're getting optimal rest.");
+    } else if (average >= 6.5) {
+      suggestions.push("You're getting some rest, but could benefit from 1–2 more hours of sleep.");
     } else {
-      setSuggestion('You need more rest. Try adjusting your sleep schedule.');
+      suggestions.push("You're not sleeping enough. Aim for 7–9 hours nightly.");
     }
+
+    if (stdDev > 1.5) {
+      suggestions.push("Your sleep duration varies a lot. Try to keep a consistent sleep schedule.");
+    }
+
+    if (lateNights >= 3) {
+      suggestions.push("You're sleeping quite late on several nights. Earlier sleep can improve rest quality.");
+    }
+
+    if (data.length >= 7) {
+      suggestions.push("Well done logging a full week of data. Keep it up!");
+    }
+
+    setSuggestion(suggestions.join(' '));
   }
 
   if (loading) {
@@ -91,6 +118,28 @@ export default function WeeklyInsights() {
         <Text style={styles.noData}>Average Daily Sleep: No data</Text>
       )}
 
+      {sleepData.length > 0 && (
+        <View style={{ width: '100%', marginTop: 10 }}>
+          {sleepData.map((item, index) => {
+            const date = new Date(item.inserted_at).toLocaleDateString(undefined, {
+              weekday: 'short',
+              month: 'short',
+              day: 'numeric',
+            });
+
+            return (
+              <View key={index} style={styles.card}>
+                <Text style={styles.title}>{date}</Text>
+                <Text style={styles.text}>Slept: {item.duration_slept.toFixed(2)} hrs</Text>
+                <Text style={styles.text}>Sleep Time: {new Date(item.sleep_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                <Text style={styles.text}>Wake Time: {new Date(item.wake_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      <Text style={styles.chartTitle}>Sleep Duration Over the Week</Text>
       <SleepBarChart data={sleepData} />
 
       <Text style={styles.suggestionHeader}>Weekly Suggestion</Text>
@@ -99,18 +148,11 @@ export default function WeeklyInsights() {
         <Text style={styles.suggestionText}>{suggestion}</Text>
       </View>
 
-         <TouchableOpacity
+      <TouchableOpacity
         onPress={() => router.push('../TaskInsights')}
-        style={{
-          marginTop: 30,
-          backgroundColor: '#4e6ab0',
-          padding: 12,
-          borderRadius: 10,
-        }}
+        style={styles.button}
       >
-        <Text style={{ color: 'white', fontSize: 16, textAlign: 'center' }}>
-          View Task Insights →
-        </Text>
+        <Text style={styles.buttonText}>View Task Insights →</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -140,7 +182,7 @@ const styles = StyleSheet.create({
   stat: {
     fontSize: 16,
     color: 'white',
-    marginBottom: 2,
+    marginBottom: 8,
   },
   noData: {
     fontStyle: 'italic',
@@ -148,6 +190,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#00d',
     marginBottom: 10,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    elevation: 3,
+    width: '100%',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4e6ab0',
+    marginBottom: 6,
+  },
+  text: {
+    fontSize: 14,
+    color: '#333',
+  },
+  chartTitle: {
+    textAlign: 'center',
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+    marginTop: 20,
   },
   suggestionHeader: {
     fontSize: 18,
@@ -158,20 +229,28 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   suggestionBox: {
-    backgroundColor: 'white',
+    marginTop: 20,
+    padding: 15,
+    backgroundColor: '#f0f4ff',
     borderRadius: 10,
-    padding: 16,
     width: '100%',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 3,
   },
   suggestionText: {
     fontSize: 15,
-    color: '#35d',
+    color: '#444',
     fontStyle: 'italic',
+  },
+  button: {
+    marginTop: 30,
+    backgroundColor: '#4e6ab0',
+    padding: 12,
+    borderRadius: 10,
+    width: '60%',
+    alignSelf: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontSize: 16,
     textAlign: 'center',
   },
 });

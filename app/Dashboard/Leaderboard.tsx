@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useState } from 'react';
 import { FlatList, Image, StyleSheet, Text, View } from 'react-native';
 
 export default function Leaderboard() {
@@ -7,9 +8,11 @@ export default function Leaderboard() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [userRank, setUserRank] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchLeaderboard();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchLeaderboard();
+    }, [])
+  );
 
   const fetchLeaderboard = async () => {
     const {
@@ -140,19 +143,6 @@ export default function Leaderboard() {
     <View style={styles.container}>
       <Text style={styles.title}>Leaderboard</Text>
 
-{currentUser && userRank !== null && (
-  <>
-    <View style={{ height: 1 }} />
-    <Text style={{ color: 'white', marginBottom: 4, fontSize: 20 }}>
-      Your Rank
-    </Text>
-    <View style={[styles.item, styles.userRow]} key="your-rank-row">
-      <Text style={styles.rank}>{userRank}.</Text>
-      <Text style={styles.name}>{currentUser.name}</Text>
-      <Text style={styles.points}>{currentUser.points} pts</Text>
-    </View>
-  </>
-)}
       <FlatList
         data={topUsers}
         keyExtractor={(item) => item.id}

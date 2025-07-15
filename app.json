@@ -69,9 +69,7 @@
       }
     },
     "owner": "avishi-gupta",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/cb06879c-e676-4cb8-8bcf-069f253bb7ca"
     }
