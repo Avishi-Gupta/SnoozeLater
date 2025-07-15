@@ -52,18 +52,15 @@ export default function SocialPage() {
     } = await supabase.auth.getUser();
 
     if (error) {
-      console.error('Error fetching user:', error);
       return;
     }
 
     if (!user) {
-      console.log('No user logged in');
       return;
     }
 
     setUserId(user.id);
 
-    // Fetch friend requests and friends
     await fetchFriendRequests(user.id);
     await fetchFriends(user.id);
   }
@@ -95,20 +92,16 @@ export default function SocialPage() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching friend requests:', error);
       return;
     }
 
     if (!data) {
-      console.log('No friend requests found');
       setIncomingRequests([]);
       setOutgoingRequests([]);
       return;
     }
 
-    console.log('Friend requests raw data:', data);
 
-    // Normalize requester and addressee (they come as arrays)
     const normalizedData: FriendRequest[] = data.map((req: any) => ({
       ...req,
       requester: Array.isArray(req.requester) ? req.requester[0] : req.requester || null,
@@ -122,8 +115,6 @@ export default function SocialPage() {
       (req) => req.requester_id === uid && req.status === 'pending'
     );
 
-    console.log('Incoming requests:', incoming);
-    console.log('Outgoing requests:', outgoing);
 
     setIncomingRequests(incoming);
     setOutgoingRequests(outgoing);
@@ -132,7 +123,6 @@ export default function SocialPage() {
   async function fetchFriends(uid: string) {
     if (!uid) return;
 
-    // Fetch all friend requests where status = accepted and user is either requester or addressee
     const { data, error } = await supabase
       .from('friend_requests')
       .select(`
@@ -148,7 +138,6 @@ export default function SocialPage() {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching friends:', error);
       setFriends([]);
       return;
     }
@@ -158,7 +147,6 @@ export default function SocialPage() {
       return;
     }
 
-    // Map accepted friends to Friend[] array
     const friendList: Friend[] = data.map((req: any) => {
       const isRequester = req.requester_id === uid;
       const friendProfile = isRequester
@@ -179,7 +167,6 @@ export default function SocialPage() {
     const input = friendInput.trim();
     if (!input || !userId) return;
 
-    // Find user by username or email
     const { data: targetUser, error } = await supabase
       .from('profiles')
       .select('id, username, email')
@@ -196,7 +183,6 @@ export default function SocialPage() {
       return;
     }
 
-    // Check if friend request or friendship already exists
     const { data: existing, error: existingErr } = await supabase
       .from('friend_requests')
       .select('id')
@@ -204,7 +190,6 @@ export default function SocialPage() {
       .single();
 
     if (existingErr) {
-      console.error('Error checking existing requests:', existingErr);
       Alert.alert('Failed to check existing requests');
       return;
     }
@@ -214,7 +199,6 @@ export default function SocialPage() {
       return;
     }
 
-    // Insert new friend request
     const { error: insertErr } = await supabase.from('friend_requests').insert({
       requester_id: userId,
       addressee_id: targetUser.id,
@@ -223,7 +207,6 @@ export default function SocialPage() {
 
     if (insertErr) {
       Alert.alert('Failed to send friend request');
-      console.error('Insert error:', insertErr);
       return;
     }
 
@@ -240,7 +223,6 @@ export default function SocialPage() {
 
     if (error) {
       Alert.alert('Failed to update friend request');
-      console.error('Update error:', error);
       return;
     }
 
