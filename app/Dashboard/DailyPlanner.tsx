@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import React, { SetStateAction, useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 type Task = {
   id: string;
@@ -403,7 +403,19 @@ export default function PlannerScreen() {
         <Text style={{ color: '#fff' }}>{formatTime(selectedTime)}</Text>
       </TouchableOpacity>
 
-      {chooseTime && (
+      <DateTimePickerModal
+          isVisible={chooseTime}
+          mode="time"
+          date={selectedTime || new Date()}
+          onConfirm={(date: SetStateAction<Date | null>) => {
+            setSelectedTime(date);
+            setChooseTime(false);
+          }}
+          onCancel={() => setChooseTime(false)}
+          locale="en-IN"          
+        />
+
+      {/* {chooseTime && (
         <View style={styles.pickerOverlay}>
           <View style={styles.pickerContainer}>
             <DateTimePicker
@@ -422,7 +434,7 @@ export default function PlannerScreen() {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      )} */}
 
       <View style={{ flexDirection: 'row', marginBottom: 10 }}>
         <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
