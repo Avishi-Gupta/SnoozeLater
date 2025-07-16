@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -8,38 +9,23 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity,
   View,
 } from 'react-native';
 
-type UserProfile = {
-  id: string;
-  username: string;
-  email: string;
-  avatar_url?: string | null;
-};
-
-type FriendRequest = {
-  id: string;
-  requester_id: string;
-  addressee_id: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  requester: UserProfile | null;
-  addressee: UserProfile | null;
-};
-
-type Friend = {
-  id: string;
-  username: string;
-  avatar_url?: string | null;
+type Activity = {
+  user_id: string;
+  message: string;
+  created_at: string;
+  profiles: {
+    username: string;
+    avatar_url: string | null;
+  };
 };
 
 export default function SocialPage() {
   const [userId, setUserId] = useState<string>('');
   const [friendInput, setFriendInput] = useState('');
-  const [friends, setFriends] = useState<Friend[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<FriendRequest[]>([]);
-  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
+  const [activityFeed, setActivityFeed] = useState<Activity[]>([]);
 
   useEffect(() => {
     fetchUserAndData();
@@ -51,116 +37,48 @@ export default function SocialPage() {
       error,
     } = await supabase.auth.getUser();
 
-    if (error) {
-      return;
-    }
-
-    if (!user) {
-      return;
-    }
+    if (error || !user) return;
 
     setUserId(user.id);
-
-    await fetchFriendRequests(user.id);
-    await fetchFriends(user.id);
+    await fetchActivityFeed(user.id);
   }
 
-  async function fetchFriendRequests(uid: string) {
-    if (!uid) return;
-
-    const { data, error } = await supabase
+  async function fetchActivityFeed(uid: string) {
+    const { data: friendRequests, error: friendErr } = await supabase
       .from('friend_requests')
-      .select(`
-        id,
-        requester_id,
-        addressee_id,
-        status,
-        requester:profiles!friend_requests_requester_id_fkey (
-          id,
-          username,
-          email,
-          avatar_url
-        ),
-        addressee:profiles!friend_requests_addressee_id_fkey (
-          id,
-          username,
-          email,
-          avatar_url
-        )
-      `)
-      .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      return;
-    }
-
-    if (!data) {
-      setIncomingRequests([]);
-      setOutgoingRequests([]);
-      return;
-    }
-
-
-    const normalizedData: FriendRequest[] = data.map((req: any) => ({
-      ...req,
-      requester: Array.isArray(req.requester) ? req.requester[0] : req.requester || null,
-      addressee: Array.isArray(req.addressee) ? req.addressee[0] : req.addressee || null,
-    }));
-
-    const incoming = normalizedData.filter(
-      (req) => req.addressee_id === uid && req.status === 'pending'
-    );
-    const outgoing = normalizedData.filter(
-      (req) => req.requester_id === uid && req.status === 'pending'
-    );
-
-
-    setIncomingRequests(incoming);
-    setOutgoingRequests(outgoing);
-  }
-
-  async function fetchFriends(uid: string) {
-    if (!uid) return;
-
-    const { data, error } = await supabase
-      .from('friend_requests')
-      .select(`
-        id,
-        requester_id,
-        addressee_id,
-        status,
-        requester:profiles!friend_requests_requester_id_fkey (id, username, avatar_url),
-        addressee:profiles!friend_requests_addressee_id_fkey (id, username, avatar_url)
-      `)
-      .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`)
+      .select('requester_id, addressee_id')
       .eq('status', 'accepted')
-      .order('updated_at', { ascending: false });
+      .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`);
 
-    if (error) {
-      setFriends([]);
-      return;
-    }
+    if (friendErr || !friendRequests) return;
 
-    if (!data) {
-      setFriends([]);
-      return;
-    }
-
-    const friendList: Friend[] = data.map((req: any) => {
-      const isRequester = req.requester_id === uid;
-      const friendProfile = isRequester
-        ? (Array.isArray(req.addressee) ? req.addressee[0] : req.addressee)
-        : (Array.isArray(req.requester) ? req.requester[0] : req.requester);
-
-      return {
-        id: friendProfile?.id || 'unknown',
-        username: friendProfile?.username || 'Unknown',
-        avatar_url: friendProfile?.avatar_url || null,
-      };
+    const friendIds = new Set<string>();
+    friendRequests.forEach((req) => {
+      if (req.requester_id === uid) friendIds.add(req.addressee_id);
+      else if (req.addressee_id === uid) friendIds.add(req.requester_id);
     });
 
-    setFriends(friendList);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    const { data: activities, error: actError } = await supabase
+      .from('activities')
+      .select('user_id, message, created_at, profiles(username, avatar_url)')
+      .in('user_id', [...friendIds])
+      .gte('created_at', threeDaysAgo.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (actError || !activities) return;
+
+    const normalizedActivities: Activity[] = (activities ?? []).map((item: any) => ({
+      user_id: item.user_id,
+      message: item.message,
+      created_at: item.created_at,
+      profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles || null,
+    }));
+
+    setActivityFeed(normalizedActivities);
   }
 
   async function handleAddFriend() {
@@ -171,7 +89,7 @@ export default function SocialPage() {
       .from('profiles')
       .select('id, username, email')
       .or(`username.eq.${input},email.eq.${input}`)
-      .single();
+      .maybeSingle();
 
     if (error || !targetUser) {
       Alert.alert('User not found');
@@ -212,22 +130,6 @@ export default function SocialPage() {
 
     Alert.alert('Friend request sent!');
     setFriendInput('');
-    fetchFriendRequests(userId);
-  }
-
-  async function handleRespond(id: string, action: 'accepted' | 'rejected') {
-    const { error } = await supabase
-      .from('friend_requests')
-      .update({ status: action, updated_at: new Date().toISOString() })
-      .eq('id', id);
-
-    if (error) {
-      Alert.alert('Failed to update friend request');
-      return;
-    }
-
-    fetchFriends(userId);
-    fetchFriendRequests(userId);
   }
 
   function renderAvatar(avatar_url?: string | null) {
@@ -243,7 +145,7 @@ export default function SocialPage() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Social</Text>
+      <Text style={[styles.title, { marginTop: 20 }]}>Social</Text>
 
       <TextInput
         style={styles.input}
@@ -255,106 +157,74 @@ export default function SocialPage() {
       />
       <Button title="Send Friend Request" onPress={handleAddFriend} />
 
-      <Text style={styles.sectionTitle}>Your Friends</Text>
-      <FlatList
-        data={friends}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {renderAvatar(item.avatar_url)}
-            <Text style={styles.text}>{item.username}</Text>
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>No friends yet.</Text>}
-      />
+      {/* Navigation buttons */}
+      <View style={{ marginTop: 16 }}>
+        <Button title="Go to Friends" onPress={() => router.push('/FriendsPage')} />
+        <View style={{ height: 10 }} />
+        <Button title="Go to Requests" onPress={() => router.push('/RequestsPage')} />
+      </View>
 
-      <Text style={styles.sectionTitle}>Incoming Requests</Text>
+      <Text style={styles.sectionTitle}>Friend Activity</Text>
       <FlatList
-        data={incomingRequests}
-        keyExtractor={(item) => item.id}
+        data={activityFeed}
+        keyExtractor={(_, index) => index.toString()}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            {renderAvatar(item.requester?.avatar_url)}
-            <Text style={styles.text}>{item.requester?.username || 'Unknown'}</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity onPress={() => handleRespond(item.id, 'accepted')}>
-                <Text style={[styles.button, { backgroundColor: 'green' }]}>Accept</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleRespond(item.id, 'rejected')}>
-                <Text style={[styles.button, { backgroundColor: 'crimson' }]}>Reject</Text>
-              </TouchableOpacity>
+            {renderAvatar(item.profiles?.avatar_url)}
+            <View>
+              <Text style={styles.text}>
+                <Text style={{ fontWeight: 'bold' }}>{item.profiles?.username}</Text>: {item.message}
+              </Text>
+              <Text style={{ fontSize: 12, color: '#999' }}>{new Date(item.created_at).toLocaleString()}</Text>
             </View>
           </View>
         )}
-        ListEmptyComponent={<Text style={styles.empty}>No incoming requests.</Text>}
-      />
-
-      <Text style={styles.sectionTitle}>Outgoing Requests</Text>
-      <FlatList
-        data={outgoingRequests}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            {renderAvatar(item.addressee?.avatar_url)}
-            <Text style={styles.text}>To: {item.addressee?.username || 'Unknown'}</Text>
-            <Text style={{ color: '#999' }}>Pending...</Text>
-          </View>
-        )}
-        ListEmptyComponent={<Text style={styles.empty}>No outgoing requests.</Text>}
+        ListEmptyComponent={<Text style={styles.empty}>No recent activity.</Text>}
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    backgroundColor: '#816ec7',
-  },
+  container: { flex: 1, padding: 16, backgroundColor: '#816ec7' },
   title: {
     fontSize: 24,
-    marginBottom: 16,
+    marginBottom: 20,
     color: 'white',
     fontWeight: 'bold',
   },
   sectionTitle: {
     fontSize: 18,
-    marginTop: 24,
+    fontWeight: '600',
+    marginTop: 16,
     marginBottom: 8,
     color: 'white',
-    fontWeight: '600',
   },
   input: {
+    borderColor: '#ccc',
+    borderWidth: 1,
+    padding: 8,
+    marginBottom: 8,
+    borderRadius: 6,
     backgroundColor: '#fff',
-    padding: 10,
-    marginBottom: 12,
-    borderRadius: 8,
   },
   card: {
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 10,
+    marginBottom: 6,
+    borderRadius: 6,
+    elevation: 1,
   },
-  text: { fontSize: 16, flex: 1, marginHorizontal: 8 },
+  text: { fontSize: 16, marginLeft: 10, color: '#000', flex: 1 },
+  empty: { textAlign: 'center', color: '#ddd', marginVertical: 10 },
   button: {
-    color: 'white',
+    color: '#fff',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 4,
     overflow: 'hidden',
-    textAlign: 'center',
-    marginLeft: 8,
-  },
-  empty: {
-    color: 'white',
-    fontStyle: 'italic',
-    marginTop: 5,
   },
   avatar: {
     width: 36,
@@ -363,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   avatarPlaceholder: {
-    backgroundColor: '#666',
+    backgroundColor: '#999',
     justifyContent: 'center',
     alignItems: 'center',
   },
