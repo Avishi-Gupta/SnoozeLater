@@ -1,4 +1,5 @@
 import SleepBarChart from '@/components/SleepBarChart';
+import SleepPunctualityChart from '@/components/SleepPunctualityChart';
 import { supabase } from '@/lib/supabase';
 import { endOfWeek, startOfWeek } from 'date-fns';
 import { router, useFocusEffect } from 'expo-router';
@@ -9,7 +10,9 @@ type SleepData = {
   sleep_time: string;
   wake_time: string;
   duration_slept: number;
-  inserted_at: string;
+  sleep_date: string;
+  target_sleep_time: string;
+  target_wake_time: string;
 };
 
 export default function WeeklyInsights() {
@@ -57,10 +60,10 @@ async function fetchSleepPoints() {
 
     const { data, error } = await supabase
       .from('sleep_data')
-      .select('sleep_time, wake_time, duration_slept, inserted_at')
-      .gte('inserted_at', start.toISOString())
-      .lte('inserted_at', end.toISOString())
-      .order('inserted_at', { ascending: true });
+      .select('sleep_time, wake_time, duration_slept, sleep_date, target_sleep_time, target_wake_time')
+      .gte('sleep_date', start.toISOString().split('T')[0])
+      .lte('sleep_date', end.toISOString().split('T')[0])
+      .order('sleep_date', { ascending: true });
 
     if (error) {
       console.error('Error fetching sleep data:', error.message);
@@ -118,6 +121,19 @@ async function fetchSleepPoints() {
       suggestions.push("Well done logging a full week of data. Keep it up!");
     }
 
+    const punctuality = getPunctualityData(data);
+
+    const lateSleeps = punctuality.filter(d => d.sleepDiff > 15).length;
+    const earlyWakes = punctuality.filter(d => d.wakeDiff < -15).length;
+
+    if (lateSleeps >= 3) {
+      suggestions.push("You're going to sleep much later than your target on several days.");
+    }
+
+    if (earlyWakes >= 3) {
+      suggestions.push("You're waking up earlier than planned often — are you getting interrupted sleep?");
+    }
+
     setSuggestion(suggestions.join(' '));
   }
 
@@ -128,6 +144,32 @@ async function fetchSleepPoints() {
       </View>
     );
   }
+
+  function getPunctualityData(data: SleepData[]) {
+  return data.map(d => {
+    const actualSleep = new Date(d.sleep_time);
+    const targetSleep = new Date(d.target_sleep_time);
+    const actualWake = new Date(d.wake_time);
+    const targetWake = new Date(d.target_wake_time);
+
+    const sleepDiff = Math.round((actualSleep.getTime() - targetSleep.getTime()) / 60000); // minutes
+    const wakeDiff = Math.round((actualWake.getTime() - targetWake.getTime()) / 60000); // minutes
+
+    const date = new Date(d.sleep_date).toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+    });
+
+    return {
+      date,
+      sleepDiff, 
+      wakeDiff,
+    };
+  });
+}
+
+
 
   return (
     <ScrollView
@@ -149,7 +191,7 @@ async function fetchSleepPoints() {
       {sleepData.length > 0 && (
         <View style={{ width: '100%', marginTop: 10 }}>
           {sleepData.map((item, index) => {
-            const date = new Date(item.inserted_at).toLocaleDateString(undefined, {
+            const date = new Date(item.sleep_date).toLocaleDateString(undefined, {
               weekday: 'short',
               month: 'short',
               day: 'numeric',
@@ -169,6 +211,11 @@ async function fetchSleepPoints() {
 
       <Text style={styles.chartTitle}>Sleep Duration Over the Week</Text>
       <SleepBarChart data={sleepData} />
+
+      <Text style={styles.chartTitle}>
+        Sleep vs Target (mins)
+      </Text>
+      <SleepPunctualityChart data={getPunctualityData(sleepData)} />
 
       <Text style={styles.suggestionHeader}>Weekly Suggestion</Text>
 
