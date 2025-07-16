@@ -1,8 +1,8 @@
 import SleepBarChart from '@/components/SleepBarChart';
 import { supabase } from '@/lib/supabase';
 import { endOfWeek, startOfWeek } from 'date-fns';
-import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type SleepData = {
@@ -17,11 +17,37 @@ export default function WeeklyInsights() {
   const [loading, setLoading] = useState(true);
   const [averageSleep, setAverageSleep] = useState<number | null>(null);
   const [suggestion, setSuggestion] = useState<string>('');
+  const [sleepPoints, setSleepPoints] = useState<number | null>(null);
 
-  useEffect(() => {
-    fetchSleepData();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchSleepData();
+      fetchSleepPoints();
+    }, [])
+  );
 
+async function fetchSleepPoints() {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData?.user) {
+    console.error('Error fetching user:', userError?.message);
+    return;
+  }
+
+  const userId = userData.user.id;
+
+  const { data, error } = await supabase
+    .from('points')
+    .select('sleep_points')
+    .eq('user_id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching sleep points:', error.message);
+  } else {
+    setSleepPoints(data.sleep_points);
+  }
+}
   async function fetchSleepData() {
     setLoading(true);
 
@@ -115,9 +141,11 @@ export default function WeeklyInsights() {
           Average Daily Sleep: {averageSleep.toFixed(2)} hrs
         </Text>
       ) : (
-        <Text style={styles.noData}>Average Daily Sleep: No data</Text>
+        <Text style={styles.stat}>Average Daily Sleep: No data</Text>
       )}
-
+<Text style={styles.stat}>
+  Sleep Points: {sleepPoints !== null ? sleepPoints : 'No data'}
+</Text>
       {sleepData.length > 0 && (
         <View style={{ width: '100%', marginTop: 10 }}>
           {sleepData.map((item, index) => {
@@ -180,9 +208,11 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   stat: {
-    fontSize: 16,
+    fontSize: 17,
     color: 'white',
     marginBottom: 8,
+    fontWeight: '500',
+    alignSelf: 'center',
   },
   noData: {
     fontStyle: 'italic',
@@ -224,9 +254,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: 'white',
-    marginTop: 24,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
+    marginTop: 20,
+    alignSelf: 'center',
   },
   suggestionBox: {
     marginTop: 20,

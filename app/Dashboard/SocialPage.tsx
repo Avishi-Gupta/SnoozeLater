@@ -3,13 +3,12 @@ import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   Image,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from 'react-native';
 
 type Activity = {
@@ -155,7 +154,9 @@ export default function SocialPage() {
         placeholderTextColor="#999"
         autoCapitalize="none"
       />
-      <Button title="Send Friend Request" onPress={handleAddFriend} />
+      <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
+        <Text style={styles.buttonText}>Send Friend Request</Text>
+      </TouchableOpacity>
 
       {/* Navigation buttons */}
       <View style={{ marginTop: 16 }}>
@@ -195,8 +196,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
+    marginTop: 24,
     marginBottom: 8,
     color: 'white',
   },
@@ -236,5 +236,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#999',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+    addButton: {
+    backgroundColor: '#4e6ab0',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    width: '60%',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 5,
+    alignSelf: 'center',
+  },
+    buttonText: {
+    color: 'white',
+    fontSize: 16,
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
