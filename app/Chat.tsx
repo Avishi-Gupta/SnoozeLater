@@ -2,16 +2,16 @@ import { supabase } from '@/lib/supabase';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-    Button,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableWithoutFeedback,
-    View,
+  Button,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 
 type Message = {
@@ -77,9 +77,9 @@ export default function ChatPage() {
 
     const { data, error } = await supabase
       .from('sleep_data')
-      .select('duration_slept, inserted_at')
+      .select('duration_slept, sleep_date')
       .eq('user_id', friendId)
-      .gte('inserted_at', start.toISOString());
+      .gte('sleep_date', start.toISOString());
 
     if (data && data.length > 0) {
       const total = data.reduce((sum, d) => sum + d.duration_slept, 0);

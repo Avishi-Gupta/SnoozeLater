@@ -6,7 +6,7 @@ const screenWidth = Dimensions.get('window').width;
 
 type Props = {
   data: {
-    inserted_at: string;
+    sleep_date: string;
     duration_slept: number;
   }[];
 };
@@ -15,7 +15,7 @@ export default function SleepBarChart({ data }: Props) {
   const dailyMap = new Map<string, number>();
 
   for (const entry of data) {
-    const date = new Date(entry.inserted_at);
+    const date = new Date(entry.sleep_date);
     const day = date.toLocaleDateString('en-US', { weekday: 'short' });
     const cappedDuration = Math.min(entry.duration_slept, 24);
     dailyMap.set(day, (dailyMap.get(day) || 0) + cappedDuration);
