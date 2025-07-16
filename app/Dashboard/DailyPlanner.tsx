@@ -130,7 +130,7 @@ export default function PlannerScreen() {
       .from('sleep_data')
       .select('target_sleep_time, target_wake_time')
       .eq('user_id', user.id)
-      .order('inserted_at', { ascending: false })
+      .order('sleep_date', { ascending: false })
       .limit(1)
       .single();
 
