@@ -34,42 +34,12 @@ export default function FocusTimer() {
   const [pauseTime, setPauseTime] = useState<Date | null>(null);
   const [remainingAtPause, setRemainingAtPause] = useState<number | null>(null);
 
-  // const hasPromptedBreakRef = useRef(false);
-  // const [showBreakButton, setShowBreakButton] = useState(false); 
-  
-//   useEffect(() => {
-//   const restoreAfterBreak = async () => {
-//     const fromBreak = await AsyncStorage.getItem('fromBreak');
-//     if (fromBreak === 'true') {
-//       const taskIdStored = await AsyncStorage.getItem('break_task_id');
-//       const duration = await AsyncStorage.getItem('break_focus_duration');
-//       const seconds = await AsyncStorage.getItem('break_seconds_left');
-//       const storedStart = await AsyncStorage.getItem('break_start_time');
-//       const taskTimeStr = await AsyncStorage.getItem('break_task_time');
-    
-//       if (taskIdStored && duration && seconds && storedStart && taskTimeStr) {
-//         setTaskId(taskIdStored);
-//         setFocusDuration(parseInt(duration));
-//         setSecondsLeft(parseInt(seconds));
-//         setStartTime(new Date(storedStart));
-//         setIsRunning(true);
-//         setIsPaused(true);
-//         setTaskTime(new Date(taskTimeStr));
-//       }
+  const hasPromptedBreakRef = useRef(false);
+  const [showBreakButton, setShowBreakButton] = useState(false); 
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const [breakSecondsLeft, setBreakSecondsLeft] = useState(300); 
+  const breakIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-//       await AsyncStorage.multiRemove([
-//         'fromBreak',
-//         'break_task_id',
-//         'break_focus_duration',
-//         'break_seconds_left',
-//         'break_start_time',
-//         'break_task_time',
-//       ]);
-//     }
-//   };
-
-//   restoreAfterBreak();
-// }, []);
 
 useEffect(() => {
   const restoreTimer = async () => {
@@ -159,6 +129,25 @@ useEffect(() => {
     if (timerRef.current) clearInterval(timerRef.current);
   };
 }, [isRunning, isPaused, startTime, focusDuration]);
+
+useEffect(() => {
+  if (showBreakModal) {
+    breakIntervalRef.current = setInterval(() => {
+      setBreakSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(breakIntervalRef.current!);
+          setShowBreakModal(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
+
+  return () => {
+    if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
+  };
+}, [showBreakModal]);
 
 useEffect(() => {
   const loadSound = async () => {
@@ -253,12 +242,12 @@ const handleStart = async () => {
 const handlePauseResume = async () => {
   if (!isRunning) return;
 
-  // if (!isPaused) {
-  //   setShowBreakButton(true);
-  // } else {
-  //   hasPromptedBreakRef.current = false; 
-  //   setShowBreakButton(false);
-  // }
+  if (!isPaused) {
+    setShowBreakButton(true);
+  } else {
+    hasPromptedBreakRef.current = false; 
+    setShowBreakButton(false);
+  }
 
   if (!isPaused) {
     const now = new Date();
@@ -608,24 +597,21 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
   </TouchableOpacity>
 )}
 
-{/* {isPaused && showBreakButton && (
+ {isPaused && showBreakButton && (
   <TouchableOpacity
-    style={[styles.button, { backgroundColor: 'lightpink' }]}
+    style={[styles.button, { backgroundColor: 'lightpurple' }]}
     onPress={async () => {
-    await AsyncStorage.setItem('fromBreak', 'true');
-    await AsyncStorage.setItem('break_task_id', Array.isArray(taskId) ? taskId[0] : (taskId ?? ''));
-    await AsyncStorage.setItem('break_focus_duration', focusDuration.toString());
-    await AsyncStorage.setItem('break_seconds_left', secondsLeft.toString());
-    await AsyncStorage.setItem('break_start_time', startTime?.toISOString() ?? '');
-    await AsyncStorage.setItem('break_task_time', taskTime?.toString() ?? '');
+    setBreakSecondsLeft(300); 
+    setShowBreakModal(true);
 
     setShowBreakButton(false);
-    router.push({ pathname: '/Break', params: { fromBreak: 'true' } });
   }}
   >
-    <Text style={styles.buttonText}>Take a Break</Text>
+
+    <Text style={styles.buttonText}>Take a 5 min break</Text>
   </TouchableOpacity>
-)} */}
+)} 
+
    {!isRunning && (
       <TouchableOpacity
         style={[styles.button, { backgroundColor: '#4e6ab0', marginTop: 30 }]}
@@ -633,6 +619,34 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
       >
         <Text style={styles.buttonText}>Back to Planner</Text>
       </TouchableOpacity>
+      )}
+
+      {showBreakModal && (
+        <View style={styles.popupOverlay}>
+          <View style={styles.popupContainer}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>🌿 Break Time</Text>
+            <Text style={{ fontSize: 16, marginBottom: 10 }}>
+              {`Time left: ${Math.floor(breakSecondsLeft / 60)}:${(breakSecondsLeft % 60).toString().padStart(2, '0')}`}
+            </Text>
+            <Text style={{ textAlign: 'center', marginBottom: 10 }}>
+              💡 Tip: Close your eyes for 20 seconds, do light stretching, or grab some water!
+            </Text>
+
+                  <TouchableOpacity
+        onPress={() => {
+          setShowBreakModal(false);
+          if (breakIntervalRef.current) clearInterval(breakIntervalRef.current);
+        }}
+        style={[styles.button, { marginTop: 10 }]}
+      >
+        <Text style={styles.buttonText}>Skip Break</Text>
+      </TouchableOpacity>
+
+            <Text style={{ fontSize: 12, color: 'gray' }}>
+              This popup will close automatically after 5 minutes.
+            </Text>
+          </View>
+        </View>
       )}
     </View>
   );

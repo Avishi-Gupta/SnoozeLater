@@ -31,6 +31,7 @@ export default function PlannerScreen() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [customTask, setCustomTask] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [editModeTaskId, setEditModeTaskId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [taskOptions, setTaskOptions] = useState([
     { label: 'Assignment', value: 'Assignment' },
@@ -55,6 +56,7 @@ export default function PlannerScreen() {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
+        .neq('status', 'completed')
         .order('time', { ascending: true });
 
       if (error) {
@@ -63,7 +65,9 @@ export default function PlannerScreen() {
       }
 
       if (data) {
-        const fixedTasks = data.map((task: any) => ({
+        const fixedTasks = data
+        .filter(task => task.status !== 'completed')
+        .map((task: any) => ({
           ...task,
           time: new Date(task.time),
           notifId: task.notif_id,
@@ -201,60 +205,147 @@ export default function PlannerScreen() {
     return id;
   }
 
-  async function handleAddTask() {
-    const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
+  // async function handleAddTask() {
+  //   const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
 
-    if (!selectedTime || !taskTitle) return;
+  //   if (!selectedTime || !taskTitle) return;
 
-    let notifId: string | null = null;
+  //   let notifId: string | null = null;
+
+  //   try {
+  //     const { status } = await Notifications.getPermissionsAsync();
+  //     if (status !== 'granted') {
+  //       const req = await Notifications.requestPermissionsAsync();
+  //       if (req.status !== 'granted') {
+  //         console.warn('Notification permissions not granted.');
+  //       }
+  //     }
+  //     notifId = await scheduleNotification(taskTitle, selectedTime, repeat);
+  //   } catch (err) {
+  //     console.error('Notification scheduling failed:', err);
+  //   }
+
+  //     const newTask: Task = {
+  //       id: String(Date.now()),
+  //       routine: taskTitle,
+  //       time: selectedTime,
+  //       repeat,
+  //       notifId: notifId ?? undefined,
+  //       start_time: null,
+  //       status: 'pending',
+  //       current_focus_secs: 0,
+  //       name: displayName.trim() || undefined, 
+  //     };
+
+  //   const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
+  //   setTasks(updatedTasks);
+
+  //   setSelectedCategory('');
+  //   setCustomTask('');
+  //   setDisplayName('');
+  //   setSelectedTime(null);
+  //   setRepeat(false);
+  // }
+
+  async function handleAddOrUpdateTask() {
+  const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
+  if (!selectedTime || !taskTitle) return;
+
+  let notifId: string | null = null;
+
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status !== 'granted') {
+      const req = await Notifications.requestPermissionsAsync();
+      if (req.status !== 'granted') {
+        console.warn('Notification permissions not granted.');
+      }
+    }
+  } catch (err) {
+    console.error('Notification check failed:', err);
+  }
+
+  if (editModeTaskId) {
+    const existing = tasks.find((t) => t.id === editModeTaskId);
+    if (!existing) return;
+
+    if (existing.notifId) {
+      await Notifications.cancelScheduledNotificationAsync(existing.notifId);
+    }
 
     try {
-      const { status } = await Notifications.getPermissionsAsync();
-      if (status !== 'granted') {
-        const req = await Notifications.requestPermissionsAsync();
-        if (req.status !== 'granted') {
-          console.warn('Notification permissions not granted.');
-        }
-      }
-      notifId = await scheduleNotification(taskTitle, selectedTime, repeat);
+      notifId = await scheduleNotification(
+        displayName.trim() ? `${taskTitle}: ${displayName.trim()}` : taskTitle,
+        selectedTime,
+        repeat
+      );
+    } catch (err) {
+      console.error('Rescheduling failed:', err);
+    }
+
+    const updatedTask: Task = {
+      ...existing,
+      routine: taskTitle,
+      time: selectedTime,
+      name: displayName.trim() || undefined,
+      repeat,
+      notifId: notifId ?? undefined,
+    };
+
+    const updated = tasks
+      .map((t) => (t.id === editModeTaskId ? updatedTask : t))
+      .sort((a, b) => a.time.getTime() - b.time.getTime());
+
+    setTasks(updated);
+    setEditModeTaskId(null);
+  } else {
+    try {
+      notifId = await scheduleNotification(
+        displayName.trim() ? `${taskTitle}: ${displayName.trim()}` : taskTitle,
+        selectedTime,
+        repeat
+      );
     } catch (err) {
       console.error('Notification scheduling failed:', err);
     }
 
-      const newTask: Task = {
-        id: String(Date.now()),
-        routine: taskTitle,
-        time: selectedTime,
-        repeat,
-        notifId: notifId ?? undefined,
-        start_time: null,
-        status: 'pending',
-        current_focus_secs: 0,
-        name: displayName.trim() || undefined, 
-      };
+    const newTask: Task = {
+      id: String(Date.now()),
+      routine: taskTitle,
+      time: selectedTime,
+      repeat,
+      notifId: notifId ?? undefined,
+      start_time: null,
+      status: 'pending',
+      current_focus_secs: 0,
+      name: displayName.trim() || undefined,
+    };
 
     const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
     setTasks(updatedTasks);
-
-    setSelectedCategory('');
-    setCustomTask('');
-    setDisplayName('');
-    setSelectedTime(null);
-    setRepeat(false);
   }
+
+  setSelectedCategory('');
+  setCustomTask('');
+  setDisplayName('');
+  setSelectedTime(null);
+  setRepeat(false);
+}
 
   const handleDeleteTask = async (taskId: string) => {
     const taskToDelete = tasks.find((t) => t.id === taskId);
+
     if (taskToDelete?.notifId) {
       await Notifications.cancelScheduledNotificationAsync(taskToDelete.notifId);
     }
 
     const { error } = await supabase.from('tasks').delete().eq('id', taskId);
     if (error) console.error('Error deleting from Supabase:', error.message);
-
+   
     const updated = tasks.filter((t) => t.id !== taskId);
-    await AsyncStorage.setItem('tasks', JSON.stringify(updated));
     setTasks(updated);
+    await AsyncStorage.setItem('tasks', JSON.stringify(updated));
+    
   };
 
   return (
@@ -342,8 +433,8 @@ export default function PlannerScreen() {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity style={styles.addButton} onPress={handleAddTask}>
-        <Text style={styles.buttonText}>Add Task</Text>
+        <TouchableOpacity style={styles.addButton} onPress={handleAddOrUpdateTask}>
+        <Text style={styles.buttonText}>{editModeTaskId ? 'Update Task' : 'Add Task'}</Text>
       </TouchableOpacity>
 
       <View style={styles.timeRow}>
@@ -386,6 +477,19 @@ export default function PlannerScreen() {
 
             <TouchableOpacity onPress={() => handleDeleteTask(item.id)} style={styles.deleteButton}>
               <Text style={styles.deleteText}>Delete</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => {
+                setEditModeTaskId(item.id);
+                setSelectedTime(item.time);
+                setRepeat(item.repeat ?? false);
+                setSelectedCategory(item.routine);
+                setCustomTask(item.routine === 'Others' ? item.routine : '');
+                setDisplayName(item.name ?? '');
+              }} style={[styles.deleteButton, { backgroundColor: 'darkblue' }]}
+            >
+              <Text style={styles.deleteText}>Edit</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -495,10 +599,11 @@ closeButton: {
 },
 timeRow: {
   flexDirection: 'row',
+  flexWrap: 'wrap', 
   justifyContent: 'center',
   alignItems: 'center',
-  width: '70%',
   marginBottom: 3,
+  gap: 10, 
 },
 timeLabel: {
   color: '#fff',
@@ -519,7 +624,7 @@ timeLabel: {
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 3 },
     shadowRadius: 5,
-    marginRight: 10,
+    // marginRight: 10,
   },
   repeatButton: {
   padding: 10,
