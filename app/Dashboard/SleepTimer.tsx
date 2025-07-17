@@ -1,9 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 export default function SleepTimer() {
   const router = useRouter();
@@ -12,11 +12,14 @@ export default function SleepTimer() {
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [sleepId, setSleepId] = useState<number | null>(null);
+  const [pickerType, setPickerType] = useState<'sleep' | 'wake' | null>(null);
 
   const [sleepTime, setSleepTime] = useState(new Date());
   const [wakeTime, setWakeTime] = useState(new Date());
   const [showSleepPicker, setShowSleepPicker] = useState(false);
   const [showWakePicker, setShowWakePicker] = useState(false);
+  const [sleepSaved, setSleepSaved] = useState(false);
+  
 
   const [sleepStart, setSleepStart] = useState<Date | null>(null);
   const [sleepEnd, setSleepEnd] = useState<Date | null>(null);
@@ -47,9 +50,22 @@ export default function SleepTimer() {
         .from('sleep_data')
         .select('id, target_sleep_time, target_wake_time')
         .eq('user_id', user.id)
-        .order('inserted_at', { ascending: false })
+        .order('sleep_date', { ascending: false })
         .limit(1)
         .single();
+
+        const sleepDate = getSleepDate(new Date());
+
+      const { data: existingSleep } = await supabase
+        .from('sleep_data')
+        .select('sleep_time, wake_time')
+        .eq('user_id', user.id)
+        .eq('sleep_date', sleepDate)
+        .maybeSingle();
+
+      if (existingSleep?.sleep_time && existingSleep?.wake_time) {
+        setSleepSaved(true);
+}
 
       if (data) {
         setSleepId(data.id);
@@ -103,107 +119,194 @@ const stopTimer = async () => {
     AsyncStorage.removeItem('sleepStart');
   };
 
-const saveTargetTimes = async (type: 'sleep' | 'wake') => {
+  function getSleepDate(sleepTime: Date): string {
+  const adjusted = new Date(sleepTime);
+  if (adjusted.getHours() < 3) {
+    adjusted.setDate(adjusted.getDate() - 1); 
+  }
+  return adjusted.toISOString().split('T')[0]; 
+}
+
+// const saveTargetTimes = async (type: 'sleep' | 'wake') => {
+//   const { data: { user }, error: userError } = await supabase.auth.getUser();
+//   if (userError || !user) return alert('Not logged in');
+
+//   const updateFields =
+//     type === 'sleep'
+//       ? { target_sleep_time: sleepTime.toISOString() }
+//       : { target_wake_time: wakeTime.toISOString() };
+
+//   if (sleepId) {
+//     const { error } = await supabase
+//       .from('sleep_data')
+//       .update(updateFields)
+//       .eq('id', sleepId);
+
+//     if (error) {
+//       alert('Failed to update: ' + error.message);
+//     } else {
+//       alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
+//     }
+//   } else {
+//     const { data, error } = await supabase
+//       .from('sleep_data')
+//       .insert({
+//         user_id: user.id,
+//         ...updateFields,
+//       })
+//       .select('id')
+//       .single();
+
+//     if (error) {
+//       alert('Insert failed: ' + error.message);
+//     } else {
+//       setSleepId(data.id);
+//       alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
+//     }
+//   }
+// };
+
+function applyTimeToToday(time: Date): Date {
+  const now = new Date();
+  const merged = new Date(now);
+  merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return merged;
+}
+
+const saveTargetTimes = async (type: 'sleep' | 'wake', time: Date) => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return alert('Not logged in');
 
+  const sleepDate = getSleepDate(type === 'sleep' ? time : sleepTime); 
+
   const updateFields =
     type === 'sleep'
-      ? { target_sleep_time: sleepTime.toISOString() }
-      : { target_wake_time: wakeTime.toISOString() };
+      ? { target_sleep_time: time.toISOString() }
+      : { target_wake_time: time.toISOString() };
 
-  if (sleepId) {
-    const { error } = await supabase
-      .from('sleep_data')
-      .update(updateFields)
-      .eq('id', sleepId);
+  const { data, error } = await supabase
+    .from('sleep_data')
+    .upsert({
+      user_id: user.id,
+      sleep_date: sleepDate,
+      ...updateFields,
+    }, { onConflict: 'user_id, sleep_date' })
+    .select('id')
+    .single();
 
-    if (error) {
-      alert('Failed to update: ' + error.message);
-    } else {
-      alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
-    }
+  if (error) {
+    alert('Error saving target time: ' + error.message);
   } else {
-    const { data, error } = await supabase
-      .from('sleep_data')
-      .insert({
-        user_id: user.id,
-        ...updateFields,
-      })
-      .select('id')
-      .single();
-
-    if (error) {
-      alert('Insert failed: ' + error.message);
-    } else {
-      setSleepId(data.id);
-      alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
-    }
+    setSleepId(data.id);
+    alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
   }
 };
 
 
- const saveSleepData = async () => {
+//  const saveSleepData = async () => {
+//   const { data: { user }, error: userError } = await supabase.auth.getUser();
+//   if (userError || !user) return alert('Not logged in');
+//   if (!sleepStart || !sleepEnd) return alert('Sleep not tracked yet.');
+
+//   const durationMs = sleepEnd.getTime() - sleepStart.getTime();
+//   const durationHours = Math.floor(durationMs / 3600000);
+
+//   if (sleepId) {
+//     const { data: existingRow, error: fetchError } = await supabase
+//       .from('sleep_data')
+//       .select('sleep_time, wake_time')
+//       .eq('id', sleepId)
+//       .single();
+
+//     if (fetchError) {
+//       alert('Error checking existing row: ' + fetchError.message);
+//       return;
+//     }
+
+//     if (!existingRow.sleep_time && !existingRow.wake_time) {
+//       const { error: updateError } = await supabase
+//         .from('sleep_data')
+//         .update({
+//           sleep_time: sleepStart.toISOString(),
+//           wake_time: sleepEnd.toISOString(),
+//           duration_slept: durationHours,
+//           inserted_at: new Date().toISOString(),
+//         })
+//         .eq('id', sleepId);
+
+//       if (updateError) {
+//         alert('Saving failed: ' + updateError.message);
+//       } else {
+//         alert('New sleep session saved!');
+//       }
+
+//     } else {
+//       const { error: insertError } = await supabase
+//         .from('sleep_data')
+//         .insert({
+//           user_id: user.id,
+//           sleep_time: sleepStart.toISOString(),
+//           wake_time: sleepEnd.toISOString(),
+//           duration_slept: durationHours,
+//           inserted_at: new Date().toISOString(),
+//           target_sleep_time: sleepTime.toISOString(),
+//           target_wake_time: wakeTime.toISOString(),
+//         });
+
+//       if (insertError) {
+//         alert('Saving failed: ' + insertError.message);
+//       } else {
+//         alert('New sleep session saved!');
+//       }
+//     }
+
+//   } else {
+//     alert('Target times not saved yet!');
+//   }
+// };
+
+const saveSleepData = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return alert('Not logged in');
   if (!sleepStart || !sleepEnd) return alert('Sleep not tracked yet.');
 
   const durationMs = sleepEnd.getTime() - sleepStart.getTime();
-  const durationHours = Math.floor(durationMs / 3600000);
+  const durationHours = Math.round(durationMs / 3600000);
+  const sleepDate = getSleepDate(sleepStart);
 
-  if (sleepId) {
-    const { data: existingRow, error: fetchError } = await supabase
-      .from('sleep_data')
-      .select('sleep_time, wake_time')
-      .eq('id', sleepId)
-      .single();
+  const { data: existing, error: checkError } = await supabase
+    .from('sleep_data')
+    .select('sleep_time, wake_time')
+    .eq('user_id', user.id)
+    .eq('sleep_date', sleepDate)
+    .maybeSingle();
 
-    if (fetchError) {
-      alert('Error checking existing row: ' + fetchError.message);
-      return;
-    }
+  if (checkError) return alert('Error checking existing sleep data');
 
-    if (!existingRow.sleep_time && !existingRow.wake_time) {
-      const { error: updateError } = await supabase
-        .from('sleep_data')
-        .update({
-          sleep_time: sleepStart.toISOString(),
-          wake_time: sleepEnd.toISOString(),
-          duration_slept: durationHours,
-          inserted_at: new Date().toISOString(),
-        })
-        .eq('id', sleepId);
+  if (existing?.sleep_time && existing?.wake_time) {
+    return alert('Sleep data already saved for today!');
+  }
 
-      if (updateError) {
-        alert('Saving failed: ' + updateError.message);
-      } else {
-        alert('New sleep session saved!');
-      }
+  const { error } = await supabase
+    .from('sleep_data')
+    .upsert({
+      user_id: user.id,
+      sleep_date: sleepDate,
+      sleep_time: sleepStart.toISOString(),
+      wake_time: sleepEnd.toISOString(),
+      duration_slept: durationHours,
+      target_sleep_time: sleepTime.toISOString(),
+      target_wake_time: wakeTime.toISOString(),
+    }, { onConflict: 'user_id, sleep_date' });
 
-    } else {
-      const { error: insertError } = await supabase
-        .from('sleep_data')
-        .insert({
-          user_id: user.id,
-          sleep_time: sleepStart.toISOString(),
-          wake_time: sleepEnd.toISOString(),
-          duration_slept: durationHours,
-          inserted_at: new Date().toISOString(),
-          target_sleep_time: sleepTime.toISOString(),
-          target_wake_time: wakeTime.toISOString(),
-        });
-
-      if (insertError) {
-        alert('Saving failed: ' + insertError.message);
-      } else {
-        alert('New sleep session saved!');
-      }
-    }
-
+  if (error) {
+    alert('Error saving sleep data: ' + error.message);
   } else {
-    alert('Target times not saved yet!');
+    alert('Sleep data saved!');
+    setSleepSaved(true); 
   }
 };
+
 
 const awardSleepPoints = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -213,7 +316,7 @@ const awardSleepPoints = async () => {
     .from('sleep_data')
     .select('*')
     .eq('user_id', user.id)
-    .order('inserted_at', { ascending: false })
+    .order('sleep_date', { ascending: false })
     .limit(1)
     .single();
 
@@ -300,9 +403,40 @@ const handleSaveAndAwardPoints = async () => {
         <Button title="Start" onPress={startTimer} disabled={isRunning} color={'darkblue'} />
         <Button title="Stop" onPress={stopTimer} disabled={!isRunning} color={'darkblue'} />
         <Button title="Reset" onPress={resetTimer} color={'darkblue'} />
-        <Button title="Save" onPress={handleSaveAndAwardPoints} color="darkblue" />
+        <Button
+          title="Save"
+          onPress={handleSaveAndAwardPoints}
+          color="darkblue"
+          disabled={sleepSaved}
+        />
       </View>
 
+      <TouchableOpacity onPress={() => setPickerType('sleep')} style={styles.timeButton}>
+  <Text style={styles.timeText}>Set Sleep Time: {formatTime(sleepTime)}</Text>
+</TouchableOpacity>
+
+<TouchableOpacity onPress={() => setPickerType('wake')} style={styles.timeButton}>
+  <Text style={styles.timeText}>Set Wake Time: {formatTime(wakeTime)}</Text>
+</TouchableOpacity>
+<DateTimePickerModal
+  isVisible={pickerType !== null}
+  mode="time"
+  date={pickerType === 'sleep' ? sleepTime : wakeTime}
+  onConfirm={(date) => {
+    const adjustedTime = applyTimeToToday(date);
+    if (pickerType === 'sleep') {
+      setSleepTime(adjustedTime);
+      saveTargetTimes('sleep', adjustedTime);
+    } else if (pickerType === 'wake') {
+      setWakeTime(adjustedTime);
+      saveTargetTimes('wake', adjustedTime);
+    }
+    setPickerType(null);
+  }}
+  onCancel={() => setPickerType(null)}
+  is24Hour={false}
+/>
+{/* 
       <TouchableOpacity onPress={() => setShowSleepPicker(true)} style={styles.timeButton}>
         <Text style={styles.timeText}>Set Sleep Time: {formatTime(sleepTime)}</Text>
       </TouchableOpacity>
@@ -357,7 +491,7 @@ const handleSaveAndAwardPoints = async () => {
             </TouchableOpacity>
           </View>
         </View>
-      )}
+      )} */}
 {/* 
       <View style={styles.actionButtons}>
         <Button title="Back" onPress={() => router.push('/Dashboard/DailyPlanner')} color="darkgrey" />
