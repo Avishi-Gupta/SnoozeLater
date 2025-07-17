@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
@@ -14,6 +15,7 @@ type Friend = {
   id: string;
   username: string;
   avatar_url?: string | null;
+  unreadCount?: number;
 };
 
 export default function FriendsPage() {
@@ -21,9 +23,14 @@ export default function FriendsPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const navigation = useNavigation();
   useEffect(() => {
+  const unsubscribe = navigation.addListener('focus', () => {
     fetchFriends();
-  }, []);
+  });
+  
+  return unsubscribe;
+}, [navigation]);
 
   async function fetchFriends() {
     setLoading(true);
@@ -55,7 +62,8 @@ export default function FriendsPage() {
       else if (req.addressee_id === user.id) friendIds.add(req.requester_id);
     });
 
-    if (friendIds.size === 0) {
+    const idsArray = Array.from(friendIds);
+    if (idsArray.length === 0) {
       setFriends([]);
       setLoading(false);
       return;
@@ -64,27 +72,32 @@ export default function FriendsPage() {
     const { data: friendsData, error: friendsError } = await supabase
       .from('profiles')
       .select('id, username, avatar_url')
-      .in('id', Array.from(friendIds));
+      .in('id', idsArray);
 
     if (friendsError || !friendsData) {
       setLoading(false);
       return;
     }
 
-    setFriends(friendsData);
+    const { data: unreadMsgs } = await supabase
+      .from('messages')
+      .select('sender')
+      .eq('receiver', user.id)
+      .eq('read', false);
+
+    const unreadCountMap: Record<string, number> = {};
+    unreadMsgs?.forEach((msg) => {
+      unreadCountMap[msg.sender] = (unreadCountMap[msg.sender] || 0) + 1;
+    });
+
+    const enrichedFriends = friendsData.map((f) => ({
+      ...f,
+      unreadCount: unreadCountMap[f.id] || 0,
+    }));
+
+    setFriends(enrichedFriends);
     setLoading(false);
   }
-
-  const renderAvatar = (avatar_url?: string | null) => {
-    if (avatar_url) {
-      return <Image source={{ uri: avatar_url }} style={styles.avatar} />;
-    }
-    return (
-      <View style={[styles.avatar, styles.avatarPlaceholder]}>
-        <Text style={{ color: '#fff' }}>?</Text>
-      </View>
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -113,8 +126,26 @@ export default function FriendsPage() {
                 })
               }
             >
-              {renderAvatar(item.avatar_url)}
-              <Text style={styles.name}>{item.username}</Text>
+              {/* Avatar + Badge container */}
+              <View style={styles.avatarContainer}>
+                {item.avatar_url ? (
+                  <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                    <Text style={{ color: '#fff' }}>?</Text>
+                  </View>
+                )}
+                {typeof item.unreadCount === 'number' && item.unreadCount > 0 && (
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>
+                        {item.unreadCount > 9 ? '9+' : item.unreadCount}
+                    </Text>
+                </View>
+                )}
+              </View>
+
+              {/* Friend Name */}
+              <Text style={styles.name}>{item.username ?? ''}</Text>
             </TouchableOpacity>
           )}
         />
@@ -145,12 +176,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     elevation: 1,
   },
+  avatarContainer: {
+    position: 'relative',
+    marginRight: 12,
+  },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    marginLeft: 4,
-    marginRight: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#ccc',
   },
   avatarPlaceholder: {
@@ -161,10 +194,28 @@ const styles = StyleSheet.create({
   name: {
     fontSize: 18,
     flex: 1,
+    color: '#000',
   },
   empty: {
     textAlign: 'center',
     color: 'white',
     marginTop: 20,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    backgroundColor: 'red',
+    borderRadius: 10,
+    minWidth: 18,
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
   },
 });

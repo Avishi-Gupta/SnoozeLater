@@ -1,6 +1,6 @@
 import { supabase } from '@/lib/supabase';
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
     Button,
     Keyboard,
@@ -10,6 +10,7 @@ import {
     StyleSheet,
     Text,
     TextInput,
+    TouchableOpacity,
     TouchableWithoutFeedback,
     View,
 } from 'react-native';
@@ -20,6 +21,7 @@ type Message = {
   receiver: string;
   text: string;
   created_at: string;
+  read: boolean;
 };
 
 export default function ChatPage() {
@@ -27,6 +29,7 @@ export default function ChatPage() {
     friendId: string;
     friendUsername: string;
   }>();
+  const router = useRouter();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -37,20 +40,25 @@ export default function ChatPage() {
   const [topTaskCategory, setTopTaskCategory] = useState<string>('–');
   const [totalPoints, setTotalPoints] = useState<number>(0);
 
-  useEffect(() => {
-    init();
-  }, []);
-
-  async function init() {
-    const { data: userData, error } = await supabase.auth.getUser();
-    const user = userData.user;
-    if (!user || error) return;
-
-    setUserId(user.id);
-    fetchChatMessages(user.id);
-    fetchFriendSleepData();
-    fetchFriendTaskData();
-  }
+  useFocusEffect(
+    useCallback(() => {
+      const run = async () => {
+        if (!friendId) return;
+  
+        const { data: userData, error } = await supabase.auth.getUser();
+        const user = userData.user;
+        if (!user || error) return;
+  
+        setUserId(user.id);
+        await markMessagesAsRead(user.id, friendId);   // Mark messages as read once screen is focused
+        await fetchChatMessages(user.id);
+        fetchFriendSleepData();
+        fetchFriendTaskData();
+      };
+  
+      run();
+    }, [friendId])
+  );
 
   async function fetchChatMessages(currentUserId: string) {
     const { data, error } = await supabase
@@ -67,6 +75,21 @@ export default function ChatPage() {
   
     if (data) {
       setMessages(data);
+    }
+  }
+
+  async function markMessagesAsRead(currentUserId: string, friendId: string) {
+    const { error } = await supabase
+      .from('messages')
+      .update({ read: true })
+      .match({
+        sender: friendId,
+        receiver: currentUserId,
+        read: false,
+      });
+
+    if (error) {
+      console.error('Error marking messages as read:', error.message);
     }
   }
 
@@ -128,6 +151,7 @@ export default function ChatPage() {
         sender: userId,
         receiver: friendId,
         text: message.trim(),
+        read: false,
       },
     ]);
 
@@ -143,7 +167,12 @@ export default function ChatPage() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          <Text style={styles.header}>Chat with {friendUsername}</Text>
+        <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+                <Text style={styles.backText}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.header}>Chat with {friendUsername}</Text>
+            </View>
 
           <View style={styles.statsBox}>
             <Text style={styles.statsText}>
@@ -208,7 +237,24 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: 'white',
     fontWeight: 'bold',
+    marginBottom: 1,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    marginBottom: 5,
+  },
+  backButton: {
+    marginRight: 6,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
     marginBottom: 10,
+  },
+  backText: {
+    fontSize: 30,
+    color: 'white',
+    fontWeight: 'bold'
   },
   statsBox: {
     backgroundColor: '#a899e6',
