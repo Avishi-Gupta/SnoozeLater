@@ -35,7 +35,6 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState('');
 
-  // Friend data
   const [avgSleep, setAvgSleep] = useState<number | null>(null);
   const [topTaskCategory, setTopTaskCategory] = useState<string>('–');
   const [totalPoints, setTotalPoints] = useState<number>(0);
@@ -50,7 +49,7 @@ export default function ChatPage() {
         if (!user || error) return;
   
         setUserId(user.id);
-        await markMessagesAsRead(user.id, friendId);   // Mark messages as read once screen is focused
+        await markMessagesAsRead(user.id, friendId);
         await fetchChatMessages(user.id);
         fetchFriendSleepData();
         fetchFriendTaskData();
@@ -124,11 +123,9 @@ export default function ChatPage() {
       .gte('completed_time', start.toISOString());
 
     if (data && data.length > 0) {
-      // Total points
       const points = data.reduce((sum, t) => sum + t.points_earned, 0);
       setTotalPoints(points);
 
-      // Most frequent category
       const categoryCount: Record<string, number> = {};
       data.forEach((t) => {
         const cat = t.category || 'Uncategorized';

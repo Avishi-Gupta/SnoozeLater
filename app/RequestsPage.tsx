@@ -72,6 +72,7 @@ export default function RequestsPage() {
       .order('created_at', { ascending: false });
 
     if (error) {
+        console.error('Failed to fetch friend requests:', error);
       Alert.alert('Failed to fetch friend requests');
       return;
     }

@@ -157,7 +157,6 @@ export default function SocialPage() {
       />
       <Button title="Send Friend Request" onPress={handleAddFriend} />
 
-      {/* Navigation buttons */}
       <View style={{ marginTop: 16 }}>
         <Button title="Go to Friends" onPress={() => router.push('/FriendsPage')} />
         <View style={{ height: 10 }} />
