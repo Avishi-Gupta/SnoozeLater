@@ -12,9 +12,10 @@ import {
   View,
 } from 'react-native';
 
-import { Ionicons } from '@expo/vector-icons';
 import DefaultProfileImage from '../../assets/images/blank-profile-picture-973460_1280.png';
+import Badges from '../../components/Badges';
 import { supabase } from '../../lib/supabase';
+
 
 type Badge = {
   badge_type: string;
@@ -203,39 +204,6 @@ export default function Profile() {
     router.replace('/login');
   };
 
-  const getIconNameForBadge = (type: string) => {
-    switch (type) {
-      case 'earlyBird':
-        return 'alarm';
-      case 'studious':
-        return 'book';
-      case 'sleepMaster':
-        return 'moon';
-      case 'taskChampion':
-        return 'trophy';
-      case 'allRounder':
-        return 'star';
-      case 'streakKeeper':
-        return 'flame';
-      case 'focusChamp':
-        return 'eye';
-      case 'nightOwl':
-        return 'moon-outline';
-      case 'marathoner':
-        return 'walk';
-      case 'perfectionist':
-        return 'checkmark-done';
-      case 'multitasker':
-        return 'shuffle';
-      case 'socialButterfly':
-        return 'people';
-      case 'earlyRiser':
-        return 'alarm-outline';
-      default:
-        return 'star';
-    }
-  };
-
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -265,27 +233,9 @@ export default function Profile() {
           </View>
 
           <View style={styles.badgesContainer}>
-          <Text style={styles.sectionTitle}>Badges Earned</Text>
-          {badges.length === 0 ? (
-            <Text style={styles.placeholderText}>No badges earned yet.</Text>
-          ) : (
-            <View style={styles.badgesRow}>  {/* *** CHANGED: replaced badgeList with badgesRow for inline layout */}
-              {badges.map((badge, idx) => (
-                <View key={idx} style={styles.badgeInline}> {/* *** CHANGED: removed white box styling */}
-                  <Ionicons
-                    name={getIconNameForBadge(badge)}  // badges are strings now
-                    size={32}
-                    color="#4e6ab0"
-                    style={{ marginRight: 6 }}
-                  />
-                  <Text style={styles.badgeText}>
-                    {badge.replace(/_/g, ' ')} {/* *** CHANGED: badges are strings, simplified */}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
+            <Text style={styles.sectionTitle}>Badges Earned</Text>
+            <Badges badgeKeys={user.badges || []} />  {/* Pass badge keys */}
+          </View>
 
           <TouchableOpacity
             style={[styles.button, { marginBottom: 15 }]}

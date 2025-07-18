@@ -14,6 +14,7 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+import Badges from '../components/Badges';
 
 type Message = {
   id: string;
@@ -151,56 +152,51 @@ export default function ChatPage() {
             <Text style={styles.header}>Chat with {friendUsername}</Text>
           </View>
 
+          {/* Display Badges */}
           <View style={styles.statsBox}>
             <Text style={styles.statsText}>Badges Earned:</Text>
-            {badges.length === 0 ? (
-            <Text style={styles.statsText}>No badges yet.</Text>
-            ) : (
-              badges.map((badge, index) => (
-              <Text key={index} style={styles.statsText}>🏅 {badge}</Text>
-              ))
-            )}
-            </View>
+            <Badges badgeKeys={badges} /> {/* Pass badges to Badges component */}
+          </View>
 
           {/* Messages Scroll */}
           <ScrollView
-      style={styles.chatBox}
-      contentContainerStyle={{ paddingBottom: 20 }}
-      keyboardShouldPersistTaps="handled"
-    >
-      {messages.length === 0 && (
-        <Text style={styles.noMessages}>No messages yet, start chatting!</Text>
-      )}
-      {messages.map((msg, idx) => {
-        const showTimestamp =
-          idx === 0 ||
-          (new Date(msg.created_at).getTime() -
-            new Date(messages[idx - 1].created_at).getTime()) /
-            1000 /
-            60 >
-            10; // more than 10 minutes difference
-
-        return (
-          <React.Fragment key={msg.id}>
-            {showTimestamp && (
-              <View style={styles.timestampContainer}>
-                <Text style={styles.timestampText}>
-                  {formatTimestamp(msg.created_at)}
-                </Text>
-              </View>
+            style={styles.chatBox}
+            contentContainerStyle={{ paddingBottom: 20 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            {messages.length === 0 && (
+              <Text style={styles.noMessages}>No messages yet, start chatting!</Text>
             )}
-            <View
-              style={[
-                styles.messageBubble,
-                msg.sender === userId ? styles.myMessage : styles.theirMessage,
-              ]}
-            >
-              <Text style={styles.messageText}>{msg.text}</Text>
-            </View>
-          </React.Fragment>
-        );
-      })}
-    </ScrollView>
+            {messages.map((msg, idx) => {
+              const showTimestamp =
+                idx === 0 ||
+                (new Date(msg.created_at).getTime() -
+                  new Date(messages[idx - 1].created_at).getTime()) /
+                  1000 /
+                  60 >
+                  10; // more than 10 minutes difference
+
+              return (
+                <React.Fragment key={msg.id}>
+                  {showTimestamp && (
+                    <View style={styles.timestampContainer}>
+                      <Text style={styles.timestampText}>
+                        {formatTimestamp(msg.created_at)}
+                      </Text>
+                    </View>
+                  )}
+                  <View
+                    style={[
+                      styles.messageBubble,
+                      msg.sender === userId ? styles.myMessage : styles.theirMessage,
+                    ]}
+                  >
+                    <Text style={styles.messageText}>{msg.text}</Text>
+                  </View>
+                </React.Fragment>
+              );
+            })}
+          </ScrollView>
 
           {/* Input Row */}
           <View style={styles.inputRow}>
