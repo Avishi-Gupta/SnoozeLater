@@ -1,14 +1,15 @@
 import { supabase } from '@/lib/supabase';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Button,
   FlatList,
   Image,
   StyleSheet,
   Text,
   TextInput,
+  TouchableOpacity,
   View
 } from 'react-native';
 
@@ -149,22 +150,42 @@ export default function SocialPage() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { marginTop: 20 }]}>Social</Text>
+      <View style={styles.header}>
+        <Ionicons name="people-circle-outline" size={36} color="white" />
+        <Text style={[styles.title, { marginLeft: 8 }]}>Social</Text>
+      </View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Add friend by username/email"
-        value={friendInput}
-        onChangeText={setFriendInput}
-        placeholderTextColor="#999"
-        autoCapitalize="none"
-      />
-      <Button title="Send Friend Request" onPress={handleAddFriend} />
+      <View style={styles.inputRow}>
+        <Ionicons name="person-add-outline" size={24} color="#444" style={{ marginRight: 8 }} />
+        <TextInput
+          style={styles.input}
+          placeholder="Add friend by username/email"
+          value={friendInput}
+          onChangeText={setFriendInput}
+          placeholderTextColor="#999"
+          autoCapitalize="none"
+        />
+        <TouchableOpacity style={styles.addButton} onPress={handleAddFriend}>
+          <Ionicons name="send-outline" size={22} color="white" />
+        </TouchableOpacity>
+      </View>
 
-      <View style={{ marginTop: 16 }}>
-        <Button title="Go to Friends" onPress={() => router.push('/FriendsPage')} />
-        <View style={{ height: 10 }} />
-        <Button title="Go to Requests" onPress={() => router.push('/RequestsPage')} />
+      <View style={styles.navButtons}>
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => router.push('/FriendsPage')}
+        >
+          <MaterialIcons name="group" size={20} color="white" />
+          <Text style={styles.navButtonText}>Friends</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navButton}
+          onPress={() => router.push('/RequestsPage')}
+        >
+          <Ionicons name="mail-unread-outline" size={20} color="white" />
+          <Text style={styles.navButtonText}>Requests</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionTitle}>Friend Activity</Text>
@@ -174,11 +195,16 @@ export default function SocialPage() {
         renderItem={({ item }) => (
           <View style={styles.card}>
             {renderAvatar(item.profiles?.avatar_url)}
-            <View>
-              <Text style={styles.text}>
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.activityText}>
                 <Text style={{ fontWeight: 'bold' }}>{item.profiles?.username}</Text>: {item.message}
               </Text>
-              <Text style={{ fontSize: 12, color: '#999' }}>{new Date(item.created_at).toLocaleString()}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+                <Ionicons name="time-outline" size={12} color="#999" />
+                <Text style={[styles.activityTime, { marginLeft: 4 }]}>
+                  {new Date(item.created_at).toLocaleString()}
+                </Text>
+              </View>
             </View>
           </View>
         )}
@@ -190,54 +216,91 @@ export default function SocialPage() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16, backgroundColor: '#816ec7' },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, marginTop: 20 },
   title: {
-    fontSize: 24,
-    marginBottom: 20,
+    fontSize: 28,
     color: 'white',
     fontWeight: 'bold',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginTop: 16,
-    marginBottom: 8,
-    color: 'white',
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   input: {
-    borderColor: '#ccc',
-    borderWidth: 1,
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 6,
+    color: '#333',
+  },
+  addButton: {
+    backgroundColor: '#5a4fcf',
     padding: 8,
-    marginBottom: 8,
-    borderRadius: 6,
-    backgroundColor: '#fff',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#5a4fcf',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 30,
+  },
+  navButtonText: {
+    color: 'white',
+    marginLeft: 6,
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    marginVertical: 10,
+    color: 'white',
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 10,
-    marginBottom: 6,
-    borderRadius: 6,
-    elevation: 1,
-  },
-  text: { fontSize: 16, marginLeft: 10, color: '#000', flex: 1 },
-  empty: { textAlign: 'center', color: '#ddd', marginVertical: 10 },
-  button: {
-    color: '#fff',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    overflow: 'hidden',
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 8,
+    elevation: 2,
   },
   avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#ccc',
   },
   avatarPlaceholder: {
     backgroundColor: '#999',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  activityText: {
+    fontSize: 16,
+    color: '#222',
+  },
+  activityTime: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 4,
+  },
+  empty: {
+    color: '#ddd',
+    textAlign: 'center',
+    marginTop: 20,
   },
 });

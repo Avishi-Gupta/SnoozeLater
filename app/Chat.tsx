@@ -1,18 +1,18 @@
 import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
-    Button,
-    Keyboard,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
 type Message = {
@@ -24,6 +24,11 @@ type Message = {
   read: boolean;
 };
 
+function formatTimestamp(dateString: string) {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
 export default function ChatPage() {
   const { friendId, friendUsername } = useLocalSearchParams<{
     friendId: string;
@@ -34,10 +39,7 @@ export default function ChatPage() {
   const [userId, setUserId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [message, setMessage] = useState('');
-
-  const [avgSleep, setAvgSleep] = useState<number | null>(null);
-  const [topTaskCategory, setTopTaskCategory] = useState<string>('–');
-  const [totalPoints, setTotalPoints] = useState<number>(0);
+  const [badges, setBadges] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -51,8 +53,7 @@ export default function ChatPage() {
         setUserId(user.id);
         await markMessagesAsRead(user.id, friendId);
         await fetchChatMessages(user.id);
-        fetchFriendSleepData();
-        fetchFriendTaskData();
+        fetchFriendBadges(friendId);
       };
   
       run();
@@ -92,51 +93,28 @@ export default function ChatPage() {
     }
   }
 
-  async function fetchFriendSleepData() {
-    const today = new Date();
-    const start = new Date(today);
-    start.setDate(start.getDate() - 6); // past 7 days
-
-    const { data, error } = await supabase
-      .from('sleep_data')
-      .select('duration_slept, sleep_date')
-      .eq('user_id', friendId)
-      .gte('sleep_date', start.toISOString());
-
-    if (data && data.length > 0) {
-      const total = data.reduce((sum, d) => sum + d.duration_slept, 0);
-      setAvgSleep(total / data.length);
-    } else {
-      setAvgSleep(null);
+  async function fetchFriendBadges(friendId: string) {
+    if (!friendId) {
+      console.error('No friendId provided.');
+      return;
     }
-  }
-
-  async function fetchFriendTaskData() {
-    const today = new Date();
-    const start = new Date(today);
-    start.setDate(start.getDate() - 7);
-
+  
     const { data, error } = await supabase
-      .from('tasks_completed')
-      .select('category, points_earned')
-      .eq('user_id', friendId)
-      .gte('completed_time', start.toISOString());
-
-    if (data && data.length > 0) {
-      const points = data.reduce((sum, t) => sum + t.points_earned, 0);
-      setTotalPoints(points);
-
-      const categoryCount: Record<string, number> = {};
-      data.forEach((t) => {
-        const cat = t.category || 'Uncategorized';
-        categoryCount[cat] = (categoryCount[cat] || 0) + 1;
-      });
-
-      const top = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0];
-      setTopTaskCategory(top?.[0] || '–');
+      .from('profiles')
+      .select('badges')
+      .eq('id', friendId)
+      .single();
+  
+    if (error) {
+      console.error('Error fetching badges:', error.message);
+      return;
+    }
+  
+    if (data && Array.isArray(data.badges)) {
+      setBadges(data.badges);
     } else {
-      setTotalPoints(0);
-      setTopTaskCategory('–');
+      console.warn('No badges found or badges is not an array');
+      setBadges([]);
     }
   }
 
@@ -156,6 +134,7 @@ export default function ChatPage() {
     fetchChatMessages(userId);
   }
 
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -164,43 +143,66 @@ export default function ChatPage() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-        <View style={styles.headerRow}>
+          {/* Header with Back Button */}
+          <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                <Text style={styles.backText}>←</Text>
+              <Ionicons name="arrow-back" size={28} color="white" />
             </TouchableOpacity>
             <Text style={styles.header}>Chat with {friendUsername}</Text>
-            </View>
-
-          <View style={styles.statsBox}>
-            <Text style={styles.statsText}>
-              Avg Sleep (past 7 days):{' '}
-              {avgSleep !== null ? `${avgSleep.toFixed(1)} hrs` : 'No data'}
-            </Text>
-            <Text style={styles.statsText}>Top Task Category: {topTaskCategory}</Text>
-            <Text style={styles.statsText}>Total Task Points: {totalPoints}</Text>
           </View>
 
-          <ScrollView
-            style={[styles.chatBox, { flex: 1 }]}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {messages.length === 0 && (
-              <Text style={styles.noMessages}>No messages yet, start chatting!</Text>
+          <View style={styles.statsBox}>
+            <Text style={styles.statsText}>Badges Earned:</Text>
+            {badges.length === 0 ? (
+            <Text style={styles.statsText}>No badges yet.</Text>
+            ) : (
+              badges.map((badge, index) => (
+              <Text key={index} style={styles.statsText}>🏅 {badge}</Text>
+              ))
             )}
-            {messages.map((msg) => (
-              <View
-                key={msg.id}
-                style={[
-                  styles.messageBubble,
-                  msg.sender === userId ? styles.myMessage : styles.theirMessage,
-                ]}
-              >
-                <Text style={styles.messageText}>{msg.text}</Text>
-              </View>
-            ))}
-          </ScrollView>
+            </View>
 
+          {/* Messages Scroll */}
+          <ScrollView
+      style={styles.chatBox}
+      contentContainerStyle={{ paddingBottom: 20 }}
+      keyboardShouldPersistTaps="handled"
+    >
+      {messages.length === 0 && (
+        <Text style={styles.noMessages}>No messages yet, start chatting!</Text>
+      )}
+      {messages.map((msg, idx) => {
+        const showTimestamp =
+          idx === 0 ||
+          (new Date(msg.created_at).getTime() -
+            new Date(messages[idx - 1].created_at).getTime()) /
+            1000 /
+            60 >
+            10; // more than 10 minutes difference
+
+        return (
+          <React.Fragment key={msg.id}>
+            {showTimestamp && (
+              <View style={styles.timestampContainer}>
+                <Text style={styles.timestampText}>
+                  {formatTimestamp(msg.created_at)}
+                </Text>
+              </View>
+            )}
+            <View
+              style={[
+                styles.messageBubble,
+                msg.sender === userId ? styles.myMessage : styles.theirMessage,
+              ]}
+            >
+              <Text style={styles.messageText}>{msg.text}</Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+    </ScrollView>
+
+          {/* Input Row */}
           <View style={styles.inputRow}>
             <TextInput
               value={message}
@@ -211,7 +213,9 @@ export default function ChatPage() {
               returnKeyType="send"
               onSubmitEditing={sendMessage}
             />
-            <Button title="Send" onPress={sendMessage} />
+            <TouchableOpacity onPress={sendMessage} style={styles.sendButton} activeOpacity={0.7}>
+              <Ionicons name="send" size={24} color="white" />
+            </TouchableOpacity>
           </View>
         </View>
       </TouchableWithoutFeedback>
@@ -230,56 +234,54 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'flex-end',
   },
-  header: {
-    fontSize: 20,
-    color: 'white',
-    fontWeight: 'bold',
-    marginBottom: 1,
-  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginBottom: 5,
+    marginBottom: 8,
   },
   backButton: {
-    marginRight: 6,
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    marginBottom: 10,
+    marginRight: 10,
+    padding: 6,
   },
-  backText: {
-    fontSize: 30,
+  header: {
+    fontSize: 22,
     color: 'white',
-    fontWeight: 'bold'
+    fontWeight: 'bold',
   },
   statsBox: {
     backgroundColor: '#a899e6',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 12,
   },
   statsText: {
     color: 'white',
-    fontSize: 14,
-    marginBottom: 2,
+    fontSize: 15,
+    marginBottom: 4,
   },
   chatBox: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 10,
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
   },
   noMessages: {
     color: '#666',
     fontStyle: 'italic',
     textAlign: 'center',
-    marginVertical: 10,
+    marginVertical: 20,
   },
   messageBubble: {
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 16,
     maxWidth: '80%',
-    marginBottom: 10,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: 3,
+    elevation: 2,
   },
   myMessage: {
     alignSelf: 'flex-end',
@@ -291,24 +293,40 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
-    color: '#000',
+    color: '#222',
   },
-  inputWrapper: {
-    backgroundColor: '#816ec7',
-    paddingBottom: 10,
+  timestampContainer: {
+    alignSelf: 'center',
+    marginVertical: 8,
+    backgroundColor: '#ccc',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  timestampText: {
+    fontSize: 12,
+    color: '#555',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   input: {
     flex: 1,
-    backgroundColor: '#fff',
-    height: 40,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginRight: 10,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 8,
+    fontSize: 16,
     maxHeight: 100,
+  },
+  sendButton: {
+    backgroundColor: '#5a4fcf',
+    borderRadius: 20,
+    padding: 12,
+    marginLeft: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -101,10 +102,14 @@ export default function FriendsPage() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Your Friends</Text>
+      {/* Header with icon */}
+      <View style={styles.header}>
+        <Ionicons name="people-circle-outline" size={36} color="white" />
+        <Text style={styles.title}>Your Friends</Text>
+      </View>
 
       {loading ? (
-        <Text style={{ color: 'white', textAlign: 'center', marginTop: 20 }}>
+        <Text style={styles.loadingText}>
           Loading...
         </Text>
       ) : friends.length === 0 ? (
@@ -136,11 +141,11 @@ export default function FriendsPage() {
                   </View>
                 )}
                 {typeof item.unreadCount === 'number' && item.unreadCount > 0 && (
-                <View style={styles.badge}>
+                  <View style={styles.badge}>
                     <Text style={styles.badgeText}>
-                        {item.unreadCount > 9 ? '9+' : item.unreadCount}
+                      {item.unreadCount > 9 ? '9+' : item.unreadCount}
                     </Text>
-                </View>
+                  </View>
                 )}
               </View>
 
@@ -161,61 +166,80 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#816ec7',
   },
-  title: {
-    fontSize: 24,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 20,
-    color: 'white',
+  },
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
+    color: 'white',
+    marginLeft: 10,
+  },
+  loadingText: {
+    color: 'white',
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 18,
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     marginVertical: 6,
-    borderRadius: 8,
-    elevation: 1,
+    borderRadius: 12,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: 12,
+    marginRight: 14,
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#ccc',
   },
   avatarPlaceholder: {
-    backgroundColor: '#aaa',
+    backgroundColor: '#999',
     justifyContent: 'center',
     alignItems: 'center',
   },
   name: {
     fontSize: 18,
     flex: 1,
-    color: '#000',
+    color: '#222',
+    fontWeight: '600',
   },
   empty: {
-    textAlign: 'center',
     color: 'white',
-    marginTop: 20,
+    textAlign: 'center',
+    marginTop: 30,
+    fontSize: 18,
+    fontStyle: 'italic',
   },
   badge: {
     position: 'absolute',
-    top: -4,
-    right: -4,
+    top: -6,
+    right: -6,
     backgroundColor: 'red',
-    borderRadius: 10,
-    minWidth: 18,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    alignItems: 'center',
+    borderRadius: 14,
+    minWidth: 24,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     justifyContent: 'center',
+    alignItems: 'center',
   },
   badgeText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
   },
 });

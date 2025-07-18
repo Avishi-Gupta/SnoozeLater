@@ -5,37 +5,50 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
+import { Ionicons } from '@expo/vector-icons';
 import DefaultProfileImage from '../../assets/images/blank-profile-picture-973460_1280.png';
 import { supabase } from '../../lib/supabase';
 
+type Badge = {
+  badge_type: string;
+  earned_at: string;
+};
+
+type User = {
+  id: string;
+  username: string;
+  email: string;
+  avatar_url?: string | null;
+  badges?: Badge[] | null;
+};
+
 export default function Profile() {
   const router = useRouter();
-  const [user, setUser] = useState<{
-    id: string;
-    username: string;
-    email: string;
-    avatar_url?: string;
-  } | null>(null);
 
+  const [user, setUser] = useState<User | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [avgSleep, setAvgSleep] = useState<number | null>(null);
   const [totalPoints, setTotalPoints] = useState<number | null>(null);
+  const [badges, setBadges] = useState<Badge[]>([]);
 
   useEffect(() => {
     const loadUserInfo = async () => {
       try {
-        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
         if (!authUser) return;
 
         const { data: profile, error } = await supabase
           .from('profiles')
-          .select('id, username, email, avatar_url')
+          .select('id, username, email, avatar_url, badges')
           .eq('id', authUser.id)
           .single();
 
@@ -44,13 +57,16 @@ export default function Profile() {
           return;
         }
 
-        const refreshedProfile = {
+        const refreshedProfile: User = {
           ...profile,
           avatar_url: profile.avatar_url ? `${profile.avatar_url}?v=${Date.now()}` : undefined,
+          badges: profile.badges || [],
         };
 
         setUser(refreshedProfile);
+        setBadges(refreshedProfile.badges || []);
         if (refreshedProfile.avatar_url) setImageUri(refreshedProfile.avatar_url);
+
         await AsyncStorage.setItem('userInfo', JSON.stringify(refreshedProfile));
 
         await fetchAverageSleep(refreshedProfile.id);
@@ -66,10 +82,10 @@ export default function Profile() {
       startDate.setDate(endDate.getDate() - 6);
 
       const { data, error } = await supabase
-      .from('sleep_data')
-      .select('duration_slept')
-      .eq('user_id', userId)
-      .gte('inserted_at', startDate.toISOString());
+        .from('sleep_data')
+        .select('duration_slept')
+        .eq('user_id', userId)
+        .gte('inserted_at', startDate.toISOString());
 
       if (error) {
         console.error('Error fetching sleep data:', error.message);
@@ -187,8 +203,42 @@ export default function Profile() {
     router.replace('/login');
   };
 
+  const getIconNameForBadge = (type: string) => {
+    switch (type) {
+      case 'earlyBird':
+        return 'alarm';
+      case 'studious':
+        return 'book';
+      case 'sleepMaster':
+        return 'moon';
+      case 'taskChampion':
+        return 'trophy';
+      case 'allRounder':
+        return 'star';
+      case 'streakKeeper':
+        return 'flame';
+      case 'focusChamp':
+        return 'eye';
+      case 'nightOwl':
+        return 'moon-outline';
+      case 'marathoner':
+        return 'walk';
+      case 'perfectionist':
+        return 'checkmark-done';
+      case 'multitasker':
+        return 'shuffle';
+      case 'socialButterfly':
+        return 'people';
+      case 'earlyRiser':
+        return 'alarm-outline';
+      default:
+        return 'star';
+    }
+  };
+
+
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={handlePickAndUploadImage}>
         <Image
           source={imageUri ? { uri: imageUri } : DefaultProfileImage}
@@ -210,14 +260,37 @@ export default function Profile() {
               <Text style={styles.placeholderText}>
                 😴 Sleep: {avgSleep !== null ? `${avgSleep.toFixed(2)} hrs/day` : 'No data yet'}
               </Text>
-              {/* <Text style={styles.placeholderText}>📚 Study: 3.8 hrs/day</Text> */}
               <Text style={styles.placeholderNote}>Based on your latest activity data.</Text>
             </View>
           </View>
 
+          <View style={styles.badgesContainer}>
+          <Text style={styles.sectionTitle}>Badges Earned</Text>
+          {badges.length === 0 ? (
+            <Text style={styles.placeholderText}>No badges earned yet.</Text>
+          ) : (
+            <View style={styles.badgesRow}>  {/* *** CHANGED: replaced badgeList with badgesRow for inline layout */}
+              {badges.map((badge, idx) => (
+                <View key={idx} style={styles.badgeInline}> {/* *** CHANGED: removed white box styling */}
+                  <Ionicons
+                    name={getIconNameForBadge(badge)}  // badges are strings now
+                    size={32}
+                    color="#4e6ab0"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.badgeText}>
+                    {badge.replace(/_/g, ' ')} {/* *** CHANGED: badges are strings, simplified */}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
           <TouchableOpacity
             style={[styles.button, { marginBottom: 15 }]}
-            onPress={() => router.push('/settings')}>
+            onPress={() => router.push('/settings')}
+          >
             <Text style={styles.buttonText}>Go to Settings</Text>
           </TouchableOpacity>
 
@@ -228,13 +301,13 @@ export default function Profile() {
       ) : (
         <Text style={styles.loadingText}>Loading profile...</Text>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: '#816ec7',
     alignItems: 'center',
     justifyContent: 'center',
@@ -276,7 +349,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   placeholderCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#fff',
     padding: 16,
     borderRadius: 10,
     width: '100%',
@@ -298,6 +371,30 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  badgesContainer: {
+    width: '100%',
+    marginBottom: 30,
+    alignItems: 'center',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 8,
+  },
+  badgeInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+    marginBottom: 8,
+  },
+  badgeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#2e6ab0',
+    textTransform: 'capitalize',
   },
   button: {
     backgroundColor: '#4e6ab0',

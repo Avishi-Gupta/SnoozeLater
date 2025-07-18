@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
@@ -510,6 +509,35 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
   } else {
     Alert.alert('Marked Completed', 'This task will repeat tomorrow.');
   }
+  const newBadges = await assignBadgesForUser(user.id);
+  if (newBadges.length > 0) {
+    Alert.alert(
+      '🎉 New Badge Earned!',
+      newBadges.map(b => `🏅 ${b.name}: ${b.description}`).join('\n'),
+    );
+  }
+
+  async function assignBadgesForUser(userId: string) {
+    try {
+      const res = await fetch('https://gfcnhjvmizcoxxreyife.functions.supabase.co/singleAssignment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ userId }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        console.error('Badge assignment error:', data.error);
+      } else {
+        console.log('Badges updated:', data.badges);
+      }
+    } catch (error) {
+      console.error('Error calling badge assignment:', error);
+    }
+  }
+  
   await AsyncStorage.multiRemove(['focusStart', 'focusDuration', 'focusPaused', 'focusPausedAt', 'focusRemainingAtPause',]);
 
   router.replace('/Dashboard/DailyPlanner');

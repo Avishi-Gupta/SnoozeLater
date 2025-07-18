@@ -391,7 +391,36 @@ const handleSaveAndAwardPoints = async () => {
 
   await saveSleepData();       
   await awardSleepPoints();
-  resetTimer();    
+  const newBadges = await assignBadgesForUser(user.id);
+  if (newBadges.length > 0) {
+    Alert.alert(
+      '🎉 New Badge Earned!',
+      newBadges.map(b => `🏅 ${b.name}: ${b.description}`).join('\n'),
+    );
+  }
+  resetTimer();   
+  
+  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmY25oanZtaXpjb3h4cmV5aWZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODYyNjM4MiwiZXhwIjoyMDY0MjAyMzgyfQ.zE7SIRAvUth8eA9Nj2RLtzQTJynffB15e_Qmf0DqNc0'; // Keep this secret! Usually not from client, better from backend proxy
+  async function assignBadgesForUser(userId: string) {
+    try {
+      const res = await fetch('https://gfcnhjvmizcoxxreyife.functions.supabase.co/singleAssignment', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      console.error('Badge assignment error:', data.error);
+    } else {
+      console.log('Badges updated:', data.badges);
+    }
+    } catch (error) {
+      console.error('Error calling badge assignment:', error);
+    }
+  }
 };
 
   return (
