@@ -84,50 +84,54 @@ export default function SocialPage() {
   async function handleAddFriend() {
     const input = friendInput.trim();
     if (!input || !userId) return;
-
+  
+  
     const { data: targetUser, error } = await supabase
       .from('profiles')
       .select('id, username, email')
       .or(`username.eq.${input},email.eq.${input}`)
       .maybeSingle();
-
+  
     if (error || !targetUser) {
       Alert.alert('User not found');
       return;
     }
-
+  
+  
     if (targetUser.id === userId) {
       Alert.alert('You cannot add yourself');
       return;
     }
-
+  
     const { data: existing, error: existingErr } = await supabase
       .from('friend_requests')
       .select('id')
-      .or(`and(requester_id.eq.${userId},addressee_id.eq.${targetUser.id}),and(requester_id.eq.${targetUser.id},addressee_id.eq.${userId})`)
-      .single();
-
+      .or(
+        `and(requester_id.eq.${userId},addressee_id.eq.${targetUser.id}),and(requester_id.eq.${targetUser.id},addressee_id.eq.${userId})`
+      )
+      .maybeSingle();
+  
     if (existingErr) {
       Alert.alert('Failed to check existing requests');
       return;
     }
-
+  
     if (existing) {
       Alert.alert('Friend request already exists or you are already friends');
       return;
     }
-
+  
     const { error: insertErr } = await supabase.from('friend_requests').insert({
       requester_id: userId,
       addressee_id: targetUser.id,
       status: 'pending',
     });
-
+  
     if (insertErr) {
       Alert.alert('Failed to send friend request');
       return;
     }
-
+  
     Alert.alert('Friend request sent!');
     setFriendInput('');
   }
