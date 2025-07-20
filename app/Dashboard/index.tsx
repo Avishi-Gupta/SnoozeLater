@@ -234,7 +234,7 @@ export default function Profile() {
 
           <View style={styles.badgesContainer}>
             <Text style={styles.sectionTitle}>Badges Earned</Text>
-            <Badges badgeKeys={user.badges || []} />  {/* Pass badge keys */}
+            <Badges badgeKeys={(user.badges || []).map(badge => badge.badge_type)} /> 
           </View>
 
           <TouchableOpacity

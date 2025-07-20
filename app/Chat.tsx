@@ -144,21 +144,21 @@ export default function ChatPage() {
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.innerContainer}>
-          {/* Header with Back Button */}
+          
           <View style={styles.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <Ionicons name="arrow-back" size={28} color="white" />
             </TouchableOpacity>
-            <Text style={styles.header}>Chat with {friendUsername}</Text>
+            <Text style={styles.header}>Chat with {String(friendUsername)}</Text>
           </View>
 
-          {/* Display Badges */}
+        
           <View style={styles.statsBox}>
             <Text style={styles.statsText}>Badges Earned:</Text>
-            <Badges badgeKeys={badges} /> {/* Pass badges to Badges component */}
+            <Badges badgeKeys={badges} /> 
           </View>
 
-          {/* Messages Scroll */}
+          
           <ScrollView
             style={styles.chatBox}
             contentContainerStyle={{ paddingBottom: 20 }}
@@ -174,7 +174,7 @@ export default function ChatPage() {
                   new Date(messages[idx - 1].created_at).getTime()) /
                   1000 /
                   60 >
-                  10; // more than 10 minutes difference
+                  10; 
 
               return (
                 <React.Fragment key={msg.id}>
@@ -198,7 +198,6 @@ export default function ChatPage() {
             })}
           </ScrollView>
 
-          {/* Input Row */}
           <View style={styles.inputRow}>
             <TextInput
               value={message}
