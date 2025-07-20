@@ -1,12 +1,10 @@
 import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 
 export default function SleepTimer() {
-  const router = useRouter();
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [seconds, setSeconds] = useState(0);
@@ -16,8 +14,6 @@ export default function SleepTimer() {
 
   const [sleepTime, setSleepTime] = useState(new Date());
   const [wakeTime, setWakeTime] = useState(new Date());
-  const [showSleepPicker, setShowSleepPicker] = useState(false);
-  const [showWakePicker, setShowWakePicker] = useState(false);
   const [sleepSaved, setSleepSaved] = useState(false);
   
 
@@ -391,16 +387,23 @@ const handleSaveAndAwardPoints = async () => {
 
   await saveSleepData();       
   await awardSleepPoints();
+
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    alert('Not logged in');
+    return;
+  }
+
   const newBadges = await assignBadgesForUser(user.id);
-  if (newBadges.length > 0) {
+  if (newBadges && newBadges.length > 0) {
     Alert.alert(
       '🎉 New Badge Earned!',
-      newBadges.map(b => `🏅 ${b.name}: ${b.description}`).join('\n'),
+      newBadges.map((b: { name: any; description: any; }) => `🏅 ${b.name}: ${b.description}`).join('\n'),
     );
   }
   resetTimer();   
   
-  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmY25oanZtaXpjb3h4cmV5aWZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODYyNjM4MiwiZXhwIjoyMDY0MjAyMzgyfQ.zE7SIRAvUth8eA9Nj2RLtzQTJynffB15e_Qmf0DqNc0'; // Keep this secret! Usually not from client, better from backend proxy
+  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmY25oanZtaXpjb3h4cmV5aWZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODYyNjM4MiwiZXhwIjoyMDY0MjAyMzgyfQ.zE7SIRAvUth8eA9Nj2RLtzQTJynffB15e_Qmf0DqNc0'; 
   async function assignBadgesForUser(userId: string) {
     try {
       const res = await fetch('https://gfcnhjvmizcoxxreyife.functions.supabase.co/singleAssignment', {
@@ -414,11 +417,14 @@ const handleSaveAndAwardPoints = async () => {
     const data = await res.json();
     if (!res.ok) {
       console.error('Badge assignment error:', data.error);
+      return [];
     } else {
       console.log('Badges updated:', data.badges);
+      return data.badges || [];
     }
     } catch (error) {
       console.error('Error calling badge assignment:', error);
+      return [];
     }
   }
 };
@@ -465,66 +471,6 @@ const handleSaveAndAwardPoints = async () => {
   onCancel={() => setPickerType(null)}
   is24Hour={false}
 />
-{/* 
-      <TouchableOpacity onPress={() => setShowSleepPicker(true)} style={styles.timeButton}>
-        <Text style={styles.timeText}>Set Sleep Time: {formatTime(sleepTime)}</Text>
-      </TouchableOpacity>
-      {showSleepPicker && (
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContainer}>
-            <DateTimePicker
-              value={sleepTime}
-              mode="time"
-              display="spinner"
-              onChange={(event, date) => {
-                if (date) setSleepTime(date);
-              }}
-              style={{ backgroundColor: '#fff' }}
-            />
-            <TouchableOpacity
-              onPress={() => {
-                setShowSleepPicker(false);
-                saveTargetTimes('sleep');
-              }}
-              style={styles.closeButton}
-            >
-              <Text style={{ color: '#fff' }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      <TouchableOpacity onPress={() => setShowWakePicker(true)} style={styles.timeButton}>
-        <Text style={styles.timeText}>Set Wake Time: {formatTime(wakeTime)}</Text>
-      </TouchableOpacity>
-      {showWakePicker && (
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContainer}>
-            <DateTimePicker
-              value={wakeTime}
-              mode="time"
-              display="spinner"
-              onChange={(event, date) => {
-                if (date) setWakeTime(date);
-              }}
-              style={{ backgroundColor: '#fff' }}
-            />
-            <TouchableOpacity
-              onPress={() => {
-                setShowWakePicker(false);
-                saveTargetTimes('wake');
-              }}
-              style={styles.closeButton}
-            >
-              <Text style={{ color: '#fff' }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )} */}
-{/* 
-      <View style={styles.actionButtons}>
-        <Button title="Back" onPress={() => router.push('/Dashboard/DailyPlanner')} color="darkgrey" />
-      </View> */}
     </View>
   );
 }

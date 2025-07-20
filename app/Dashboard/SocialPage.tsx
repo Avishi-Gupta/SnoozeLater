@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   FlatList,
@@ -27,10 +27,15 @@ export default function SocialPage() {
   const [userId, setUserId] = useState<string>('');
   const [friendInput, setFriendInput] = useState('');
   const [activityFeed, setActivityFeed] = useState<Activity[]>([]);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
+  const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
-  useEffect(() => {
-    fetchUserAndData();
-  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchUserAndData();
+    }, [])
+  );
 
   async function fetchUserAndData() {
     const {
@@ -42,6 +47,33 @@ export default function SocialPage() {
 
     setUserId(user.id);
     await fetchActivityFeed(user.id);
+    await fetchUnreadMessages(user.id);
+    await fetchPendingRequests(user.id);
+  }
+
+
+  async function fetchUnreadMessages(uid: string) {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('id', { count: 'exact' })
+      .eq('receiver_id', uid)
+      .eq('read', false);
+
+    if (!error && data) {
+      setUnreadMessagesCount(data.length);
+    }
+  }
+
+  async function fetchPendingRequests(uid: string) {
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select('id', { count: 'exact' })
+      .eq('addressee_id', uid)
+      .eq('status', 'pending');
+
+    if (!error && data) {
+      setPendingRequestsCount(data.length);
+    }
   }
 
   async function fetchActivityFeed(uid: string) {
@@ -148,6 +180,7 @@ export default function SocialPage() {
     );
   }
 
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -175,7 +208,21 @@ export default function SocialPage() {
           style={styles.navButton}
           onPress={() => router.push('/FriendsPage')}
         >
-          <MaterialIcons name="group" size={20} color="white" />
+
+          <View style={{ position: 'relative' }}>
+            <MaterialIcons name="group" size={20} color="white" />
+            {unreadMessagesCount > 0 && (
+              <View style={{
+                position: 'absolute',
+                top: -2,
+                right: -2,
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: 'red',
+              }} />
+            )}
+          </View>
           <Text style={styles.navButtonText}>Friends</Text>
         </TouchableOpacity>
 
@@ -183,7 +230,20 @@ export default function SocialPage() {
           style={styles.navButton}
           onPress={() => router.push('/RequestsPage')}
         >
-          <Ionicons name="mail-unread-outline" size={20} color="white" />
+          <View style={{ position: 'relative' }}>
+              <Ionicons name="mail-unread-outline" size={20} color="white" />
+              {pendingRequestsCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  top: -2,
+                  right: -2,
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: 'red',
+                }} />
+              )}
+            </View>
           <Text style={styles.navButtonText}>Requests</Text>
         </TouchableOpacity>
       </View>

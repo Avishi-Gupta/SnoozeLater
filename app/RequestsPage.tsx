@@ -1,13 +1,15 @@
 import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 type UserProfile = {
@@ -124,6 +126,13 @@ export default function RequestsPage() {
 
   return (
     <View style={styles.container}>
+              <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Ionicons name="arrow-back" size={24} color="white" />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
       <Text style={styles.title}>Friend Requests</Text>
 
       <Text style={styles.sectionTitle}>Incoming Requests</Text>
@@ -235,5 +244,17 @@ const styles = StyleSheet.create({
       color: '#ddd',
       marginVertical: 20,
       fontSize: 16,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 10,
+      padding: 8,
+    },
+
+    backText: {
+      color: 'white',
+      fontSize: 16,
+      marginLeft: 5,
     },
   });

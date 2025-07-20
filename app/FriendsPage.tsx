@@ -4,12 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
-    FlatList,
-    Image,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  FlatList,
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 type Friend = {
@@ -102,7 +102,13 @@ export default function FriendsPage() {
 
   return (
     <View style={styles.container}>
-      {/* Header with icon */}
+                <TouchableOpacity
+      style={styles.backButton}
+      onPress={() => router.back()}
+    >
+      <Ionicons name="arrow-back" size={24} color="white" />
+      <Text style={styles.backText}>Back</Text>
+    </TouchableOpacity>
       <View style={styles.header}>
         <Ionicons name="people-circle-outline" size={36} color="white" />
         <Text style={styles.title}>Your Friends</Text>
@@ -131,7 +137,6 @@ export default function FriendsPage() {
                 })
               }
             >
-              {/* Avatar + Badge container */}
               <View style={styles.avatarContainer}>
                 {item.avatar_url ? (
                   <Image source={{ uri: item.avatar_url }} style={styles.avatar} />
@@ -149,12 +154,15 @@ export default function FriendsPage() {
                 )}
               </View>
 
-              {/* Friend Name */}
-              <Text style={styles.name}>{item.username ?? ''}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.name}>{item.username ?? ''}</Text>
+                <Text style={styles.chatLabel}>Chat</Text>
+              </View>
             </TouchableOpacity>
           )}
         />
       )}
+
     </View>
   );
 }
@@ -242,4 +250,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  infoRow: {
+  flex: 1,
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingLeft: 10,
+  paddingRight: 10,
+},
+
+chatLabel: {
+  color: '#ccc',
+  fontSize: 14,
+  fontStyle: 'italic',
+},
+backButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 10,
+  padding: 8,
+},
+
+backText: {
+  color: 'white',
+  fontSize: 16,
+  marginLeft: 5,
+},
+
 });
