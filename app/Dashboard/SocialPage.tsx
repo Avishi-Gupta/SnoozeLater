@@ -82,35 +82,45 @@ export default function SocialPage() {
       .select('requester_id, addressee_id')
       .eq('status', 'accepted')
       .or(`requester_id.eq.${uid},addressee_id.eq.${uid}`);
-
+  
     if (friendErr || !friendRequests) return;
-
+  
     const friendIds = new Set<string>();
     friendRequests.forEach((req) => {
       if (req.requester_id === uid) friendIds.add(req.addressee_id);
       else if (req.addressee_id === uid) friendIds.add(req.requester_id);
     });
-
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-
-    const { data: activities, error: actError } = await supabase
-      .from('activities')
-      .select('user_id, message, created_at, profiles(username, avatar_url)')
+  
+    // Fetch only the 5 most recent tasks by friends
+    const { data: taskCompletions, error: taskErr } = await supabase
+      .from('tasks_completed')
+      .select(`
+        user_id,
+        task_id,
+        category,
+        completed_time,
+        punctuality_mins,
+        points_earned,
+        time_spent_secs,
+        profiles(username, avatar_url)
+      `)
       .in('user_id', [...friendIds])
-      .gte('created_at', threeDaysAgo.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(20);
-
-    if (actError || !activities) return;
-
-    const normalizedActivities: Activity[] = (activities ?? []).map((item: any) => ({
+      .order('completed_time', { ascending: false })
+      .limit(5);
+  
+    if (taskErr || !taskCompletions) return;
+  
+    const normalizedActivities: Activity[] = taskCompletions.map((item: any) => ({
       user_id: item.user_id,
-      message: item.message,
-      created_at: item.created_at,
+      created_at: item.completed_time,
+      category: item.category,
+      punctuality_mins: item.punctuality_mins,
+      points_earned: item.points_earned,
+      time_spent_secs: item.time_spent_secs,
       profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles || null,
+      message: `completed a ${item.category} task`,
     }));
-
+  
     setActivityFeed(normalizedActivities);
   }
 
