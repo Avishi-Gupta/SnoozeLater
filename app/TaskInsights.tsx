@@ -268,12 +268,19 @@ const chartConfig = {
       </Text>
         <View style={styles.suggestionBox}>
     <Text style={styles.suggestionHeader}>Weekly Suggestions</Text>
-    {suggestions.map((s, i) => (
-      <Text key={i} style={styles.suggestionItem}>• {s}</Text>
-    ))}
+     {stats.length === 0 ? (
+        <Text style={[styles.noData, { color: 'darkgray' }]}>No completed tasks yet.</Text>
+      ) : (
+        suggestions.map((s, i) => (
+          <Text key={i} style={styles.suggestionItem}>• {s}</Text>
+        ))
+      )}
   </View>
 
                 <Text style={styles.chartTitle}>Task Category Distribution</Text>
+                 {stats.length === 0 ? (
+        <Text style={styles.noData}>No completed tasks yet.</Text>
+      ) : (
                     <PieChart
                     data={pieData}
                     width={Dimensions.get('window').width - 20}
@@ -285,8 +292,11 @@ const chartConfig = {
                     absolute
                     />
 
-
+      )}
                 <Text style={styles.chartTitle}>Total Time Spent (hrs) per Category</Text>
+                 {stats.length === 0 ? (
+        <Text style={styles.noData}>No completed tasks yet.</Text>
+      ) : (
                 <LineChart
                 data={{
                     labels: chartLabels,
@@ -298,8 +308,12 @@ const chartConfig = {
                 bezier
                 style={styles.chart}
                 />
+              )}
 
                 <Text style={styles.chartTitle}>Avg Punctuality by Time of Day</Text>
+                 {stats.length === 0 ? (
+        <Text style={styles.noData}>No completed tasks yet.</Text>
+      ) : (
                     <BarChart
                     data={{
                         labels: ['Morning', 'Afternoon', 'Evening', 'Night'],
@@ -312,16 +326,16 @@ const chartConfig = {
                     yAxisSuffix=" min"
                     style={styles.chart}
                     />
+                  )}
 
                           {stats.length === 0 ? (
-        <Text style={styles.noData}>No completed tasks yet.</Text>
+        <Text style={styles.noData}></Text>
       ) : (
+
         stats.map((s) => (
           <View key={s.category} style={styles.card}>
             <Text style={styles.title}>{s.category}</Text>
             <Text style={styles.text}>Tasks Completed: {s.count}</Text>
-            {/* <Text style={styles.text}>Average Punctuality: {s.avgPunctuality.toFixed(1)} mins</Text>
-            <Text style={styles.text}>Points Earned: {s.totalPoints}</Text> */}
             <Text style={styles.text}>Time Spent: {s.totalTimeHrs} hr(s)</Text>
           </View>
         ))
@@ -412,6 +426,7 @@ suggestionHeader: {
   fontWeight: 'bold',
   marginBottom: 10,
   color: '#333',
+  textAlign: 'center',
 },
 suggestionItem: {
   fontSize: 15,

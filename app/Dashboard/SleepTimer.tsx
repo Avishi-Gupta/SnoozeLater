@@ -115,52 +115,16 @@ const stopTimer = async () => {
     AsyncStorage.removeItem('sleepStart');
   };
 
-  function getSleepDate(sleepTime: Date): string {
+function getSleepDate(sleepTime: Date): string {
+  if (!(sleepTime instanceof Date)) sleepTime = new Date(sleepTime);
   const adjusted = new Date(sleepTime);
-  if (adjusted.getHours() < 3) {
-    adjusted.setDate(adjusted.getDate() - 1); 
+  
+  if (adjusted.getHours() >= 0 && adjusted.getHours() < 3) {
+    adjusted.setDate(adjusted.getDate() - 1);
   }
-  return adjusted.toISOString().split('T')[0]; 
+
+  return adjusted.toISOString().split('T')[0];
 }
-
-// const saveTargetTimes = async (type: 'sleep' | 'wake') => {
-//   const { data: { user }, error: userError } = await supabase.auth.getUser();
-//   if (userError || !user) return alert('Not logged in');
-
-//   const updateFields =
-//     type === 'sleep'
-//       ? { target_sleep_time: sleepTime.toISOString() }
-//       : { target_wake_time: wakeTime.toISOString() };
-
-//   if (sleepId) {
-//     const { error } = await supabase
-//       .from('sleep_data')
-//       .update(updateFields)
-//       .eq('id', sleepId);
-
-//     if (error) {
-//       alert('Failed to update: ' + error.message);
-//     } else {
-//       alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
-//     }
-//   } else {
-//     const { data, error } = await supabase
-//       .from('sleep_data')
-//       .insert({
-//         user_id: user.id,
-//         ...updateFields,
-//       })
-//       .select('id')
-//       .single();
-
-//     if (error) {
-//       alert('Insert failed: ' + error.message);
-//     } else {
-//       setSleepId(data.id);
-//       alert(`${type === 'sleep' ? 'Sleep' : 'Wake'} time saved!`);
-//     }
-//   }
-// };
 
 function applyTimeToToday(time: Date): Date {
   const now = new Date();
@@ -173,7 +137,8 @@ const saveTargetTimes = async (type: 'sleep' | 'wake', time: Date) => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   if (userError || !user) return alert('Not logged in');
 
-  const sleepDate = getSleepDate(type === 'sleep' ? time : sleepTime); 
+  const sleepDate = getSleepDate(type === 'sleep' ? time : sleepTime);
+  console.log("Saving sleep date as:", sleepDate);
 
   const updateFields =
     type === 'sleep'
@@ -199,67 +164,6 @@ const saveTargetTimes = async (type: 'sleep' | 'wake', time: Date) => {
 };
 
 
-//  const saveSleepData = async () => {
-//   const { data: { user }, error: userError } = await supabase.auth.getUser();
-//   if (userError || !user) return alert('Not logged in');
-//   if (!sleepStart || !sleepEnd) return alert('Sleep not tracked yet.');
-
-//   const durationMs = sleepEnd.getTime() - sleepStart.getTime();
-//   const durationHours = Math.floor(durationMs / 3600000);
-
-//   if (sleepId) {
-//     const { data: existingRow, error: fetchError } = await supabase
-//       .from('sleep_data')
-//       .select('sleep_time, wake_time')
-//       .eq('id', sleepId)
-//       .single();
-
-//     if (fetchError) {
-//       alert('Error checking existing row: ' + fetchError.message);
-//       return;
-//     }
-
-//     if (!existingRow.sleep_time && !existingRow.wake_time) {
-//       const { error: updateError } = await supabase
-//         .from('sleep_data')
-//         .update({
-//           sleep_time: sleepStart.toISOString(),
-//           wake_time: sleepEnd.toISOString(),
-//           duration_slept: durationHours,
-//           inserted_at: new Date().toISOString(),
-//         })
-//         .eq('id', sleepId);
-
-//       if (updateError) {
-//         alert('Saving failed: ' + updateError.message);
-//       } else {
-//         alert('New sleep session saved!');
-//       }
-
-//     } else {
-//       const { error: insertError } = await supabase
-//         .from('sleep_data')
-//         .insert({
-//           user_id: user.id,
-//           sleep_time: sleepStart.toISOString(),
-//           wake_time: sleepEnd.toISOString(),
-//           duration_slept: durationHours,
-//           inserted_at: new Date().toISOString(),
-//           target_sleep_time: sleepTime.toISOString(),
-//           target_wake_time: wakeTime.toISOString(),
-//         });
-
-//       if (insertError) {
-//         alert('Saving failed: ' + insertError.message);
-//       } else {
-//         alert('New sleep session saved!');
-//       }
-//     }
-
-//   } else {
-//     alert('Target times not saved yet!');
-//   }
-// };
 
 const saveSleepData = async () => {
   const { data: { user }, error: userError } = await supabase.auth.getUser();
