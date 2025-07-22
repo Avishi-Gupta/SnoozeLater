@@ -122,9 +122,10 @@ async function fetchSleepPoints() {
     }
 
     const punctuality = getPunctualityData(data);
+    console.log("Punctuality chart data:", punctuality);
 
-    const lateSleeps = punctuality.filter(d => d.sleepDiff > 15).length;
-    const earlyWakes = punctuality.filter(d => d.wakeDiff < -15).length;
+    const lateSleeps = punctuality.filter(d => d && d.sleepDiff > 15).length;
+    const earlyWakes = punctuality.filter(d => d && d.wakeDiff < -15).length;
 
     if (lateSleeps >= 3) {
       suggestions.push("You're going to sleep much later than your target on several days.");
@@ -145,30 +146,45 @@ async function fetchSleepPoints() {
     );
   }
 
-  function getPunctualityData(data: SleepData[]) {
-  return data.map(d => {
-    const actualSleep = new Date(d.sleep_time);
-    const targetSleep = new Date(d.target_sleep_time);
-    const actualWake = new Date(d.wake_time);
-    const targetWake = new Date(d.target_wake_time);
+  const latestEntry = sleepData[sleepData.length - 1];
 
-    const sleepDiff = Math.round((actualSleep.getTime() - targetSleep.getTime()) / 60000); // minutes
-    const wakeDiff = Math.round((actualWake.getTime() - targetWake.getTime()) / 60000); // minutes
 
-    const date = new Date(d.sleep_date).toLocaleDateString(undefined, {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-    });
+function getPunctualityData(data: SleepData[]) {
+  return data
+    .filter(d =>
+      d.sleep_time &&
+      d.wake_time &&
+      d.target_sleep_time &&
+      d.target_wake_time
+    )
+    .map(d => {
+      const actualSleep = new Date(d.sleep_time);
+      const targetSleep = new Date(d.target_sleep_time);
+      const actualWake = new Date(d.wake_time);
+      const targetWake = new Date(d.target_wake_time);
 
-    return {
-      date,
-      sleepDiff, 
-      wakeDiff,
-    };
-  });
+      if (
+        isNaN(actualSleep.getTime()) ||
+        isNaN(targetSleep.getTime()) ||
+        isNaN(actualWake.getTime()) ||
+        isNaN(targetWake.getTime())
+      ) {
+        return null;
+      }
+
+      const sleepDiff = Math.round((actualSleep.getTime() - targetSleep.getTime()) / 60000); 
+      const wakeDiff = Math.round((actualWake.getTime() - targetWake.getTime()) / 60000); 
+
+      const label = new Date(d.sleep_date).toLocaleDateString('en-US', { weekday: 'short' }); 
+
+      return {
+        date: label,
+        sleepDiff,
+        wakeDiff,
+      };
+    })
+    .filter(d => d !== null && !isNaN(d.sleepDiff) && !isNaN(d.wakeDiff));
 }
-
 
 
   return (
@@ -178,7 +194,7 @@ async function fetchSleepPoints() {
     >
       <Text style={styles.header}>Weekly Insights</Text>
 
-      {averageSleep !== null ? (
+      {averageSleep != null ? (
         <Text style={styles.stat}>
           Average Daily Sleep: {averageSleep.toFixed(2)} hrs
         </Text>
@@ -188,34 +204,36 @@ async function fetchSleepPoints() {
 <Text style={styles.stat}>
   Sleep Points: {sleepPoints !== null ? sleepPoints : 'No data'}
 </Text>
-      {sleepData.length > 0 && (
-        <View style={{ width: '100%', marginTop: 10 }}>
-          {sleepData.map((item, index) => {
-            const date = new Date(item.sleep_date).toLocaleDateString(undefined, {
-              weekday: 'short',
-              month: 'short',
-              day: 'numeric',
-            });
 
-            return (
-              <View key={index} style={styles.card}>
-                <Text style={styles.title}>{date}</Text>
-                <Text style={styles.text}>Slept: {item.duration_slept.toFixed(2)} hrs</Text>
-                <Text style={styles.text}>Sleep Time: {new Date(item.sleep_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                <Text style={styles.text}>Wake Time: {new Date(item.wake_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-              </View>
-            );
-          })}
-        </View>
-      )}
+      {latestEntry && (
+  <View style={styles.latestBox}>
+     <Text style={styles.title}>
+      Latest: {new Date(sleepData[sleepData.length - 1].sleep_date).toLocaleDateString(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })}
+    </Text>
+    <Text style={styles.text}>
+      Sleep: {latestEntry.sleep_time ? new Date(latestEntry.sleep_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No data'}
+    </Text>
+    <Text style={styles.text}>
+      Wake: {latestEntry.wake_time ? new Date(latestEntry.wake_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'No data'}
+    </Text>
+    <Text style={styles.text}>
+      Duration: {latestEntry.duration_slept != null ? latestEntry.duration_slept.toFixed(2) + ' hrs': 'No data'}
+    </Text>
+  </View>
+)}
 
       <Text style={styles.chartTitle}>Sleep Duration Over the Week</Text>
       <SleepBarChart data={sleepData} />
-
+{/* 
       <Text style={styles.chartTitle}>
         Sleep vs Target (mins)
-      </Text>
-      <SleepPunctualityChart data={getPunctualityData(sleepData)} />
+      </Text> */}
+        
+      <SleepPunctualityChart data={getPunctualityData(sleepData).filter((d): d is { date: string; sleepDiff: number; wakeDiff: number } => d !== null)} />
 
       <Text style={styles.suggestionHeader}>Weekly Suggestion</Text>
 
@@ -329,4 +347,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: 'center',
   },
+  latestBox: {
+  backgroundColor: '#fff',
+  padding: 14,
+  borderRadius: 12,
+  marginVertical: 12,
+  width: '100%',
+},
+
 });

@@ -1,56 +1,70 @@
-
 import React from 'react';
-import { Dimensions, View } from 'react-native';
+import { Dimensions, Text, View } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 
 type PunctualityData = {
   date: string;
-  sleepDiff: number; 
-  wakeDiff: number;  
+  sleepDiff: number;
+  wakeDiff: number;
 };
 
-export default function SleepPunctualityChart({ data }: { data: PunctualityData[] }) {
-  const screenWidth = Dimensions.get('window').width;
+const chartConfig = {
+  backgroundGradientFrom: 'white',
+  backgroundGradientTo: 'white',
+  decimalPlaces: 0,
+  color: (opacity = 1) => `rgba(33, 33, 33, ${opacity})`,
+  labelColor: () => 'black',
+  propsForBackgroundLines: {
+    stroke: '#eee',
+  },
+};
 
-//   const labels = data.map((d) => d.date.split(',')[0]); 
-//   const sleepOffsets = data.map((d) => d.sleepDiff);
-//   const wakeOffsets = data.map((d) => d.wakeDiff);
+const screenWidth = Dimensions.get('window').width;
 
-    const chartLabels: string[] = [];
-    const chartValues: number[] = [];
-
-    data.forEach(d => {
-    chartLabels.push(`${d.date.split(',')[0]} S`);
-    chartValues.push(d.sleepDiff/60);
-    chartLabels.push(`${d.date.split(',')[0]} W`);
-    chartValues.push(d.wakeDiff/60);
-    });
+export default function PunctualityBarCharts({ data }: { data: PunctualityData[] }) {
+  const labels = data.map((d) =>
+  new Date(d.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })
+);
+  const sleepData = data.map((d) => d.sleepDiff);
+  const wakeData = data.map((d) => d.wakeDiff);
 
   return (
-    <View style={{ marginVertical: 16 }}>
+    <View style={{ margin: 16 }}>
+      <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, color: 'white' }}>
+        Sleep Time Punctuality (in minutes)
+      </Text>
       <BarChart
-        data={{
-       labels: chartLabels,
-       datasets: [{ data: chartValues }],
-        }}
-        width={screenWidth - 40}
-        height={220}
-        yAxisLabel=""
-        yAxisSuffix="m"
-        fromZero
-        chartConfig={{
-          backgroundGradientFrom: 'white',
-          backgroundGradientTo: 'white',
-          decimalPlaces: 1,
-          color: (opacity = 1) => `rgba(0, 0, 200, ${opacity})`,
-          labelColor: () => 'black',
-        }}
-        style={{
-          borderRadius: 8,
-          marginLeft: 0,
-        }}
-        verticalLabelRotation={0}
-      />
+              data={{
+                  labels,
+                  datasets: [{ data: sleepData }],
+              }}
+              width={screenWidth - 32}
+              height={220}
+              fromZero
+              yAxisSuffix="m"
+              chartConfig={{
+                  ...chartConfig,
+                  color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
+              }}
+              style={{ borderRadius: 8 }} yAxisLabel={''}      />
+
+      <Text style={{ fontSize: 16, fontWeight: 'bold', marginTop: 24, marginBottom: 8, color: 'white' }}>
+        Wake Time Punctuality (in minutes)
+      </Text>
+      <BarChart
+              data={{
+                  labels,
+                  datasets: [{ data: wakeData }],
+              }}
+              width={screenWidth - 32}
+              height={220}
+              fromZero
+              yAxisSuffix="m"
+              chartConfig={{
+                  ...chartConfig,
+                  color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, 
+              }}
+              style={{ borderRadius: 8 }} yAxisLabel={''}      />
     </View>
   );
 }

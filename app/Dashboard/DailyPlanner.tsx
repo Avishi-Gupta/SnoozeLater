@@ -154,6 +154,13 @@ export default function PlannerScreen() {
     return `${hours}:${minutes}`;
   }
 
+  function applyTimeToToday(time: Date): Date {
+  const now = new Date();
+  const merged = new Date(now);
+  merged.setHours(time.getHours(), time.getMinutes(), 0, 0);
+  return merged;
+}
+
   async function scheduleNotification(title: string, date: Date, repeat: boolean) {
     const id = await Notifications.scheduleNotificationAsync({
       content: {
@@ -205,47 +212,6 @@ export default function PlannerScreen() {
     return id;
   }
 
-  // async function handleAddTask() {
-  //   const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
-
-  //   if (!selectedTime || !taskTitle) return;
-
-  //   let notifId: string | null = null;
-
-  //   try {
-  //     const { status } = await Notifications.getPermissionsAsync();
-  //     if (status !== 'granted') {
-  //       const req = await Notifications.requestPermissionsAsync();
-  //       if (req.status !== 'granted') {
-  //         console.warn('Notification permissions not granted.');
-  //       }
-  //     }
-  //     notifId = await scheduleNotification(taskTitle, selectedTime, repeat);
-  //   } catch (err) {
-  //     console.error('Notification scheduling failed:', err);
-  //   }
-
-  //     const newTask: Task = {
-  //       id: String(Date.now()),
-  //       routine: taskTitle,
-  //       time: selectedTime,
-  //       repeat,
-  //       notifId: notifId ?? undefined,
-  //       start_time: null,
-  //       status: 'pending',
-  //       current_focus_secs: 0,
-  //       name: displayName.trim() || undefined, 
-  //     };
-
-  //   const updatedTasks = [...tasks, newTask].sort((a, b) => a.time.getTime() - b.time.getTime());
-  //   setTasks(updatedTasks);
-
-  //   setSelectedCategory('');
-  //   setCustomTask('');
-  //   setDisplayName('');
-  //   setSelectedTime(null);
-  //   setRepeat(false);
-  // }
 
   async function handleAddOrUpdateTask() {
   const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
@@ -408,33 +374,13 @@ export default function PlannerScreen() {
           mode="time"
           date={selectedTime || new Date()}
           onConfirm={(date: SetStateAction<Date | null>) => {
-            setSelectedTime(date);
+            setSelectedTime(applyTimeToToday(date));
             setChooseTime(false);
           }}
           onCancel={() => setChooseTime(false)}
           locale="en-IN"          
         />
 
-      {/* {chooseTime && (
-        <View style={styles.pickerOverlay}>
-          <View style={styles.pickerContainer}>
-            <DateTimePicker
-              value={selectedTime || new Date()}
-              mode="time"
-              display="spinner"
-              onChange={(event, date) => {
-                if (date) {
-                  setSelectedTime(date);
-                }
-              }}
-              style={{ backgroundColor: '#fff' }}
-            />
-            <TouchableOpacity onPress={() => setChooseTime(false)} style={styles.closeButton}>
-              <Text style={{ color: '#fff' }}>Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )} */}
 
       <View style={{ flexDirection: 'row', marginBottom: 10 }}>
         <TouchableOpacity onPress={() => setRepeat(false)} style={[styles.repeatButton, !repeat && styles.selectedRepeat]}>
