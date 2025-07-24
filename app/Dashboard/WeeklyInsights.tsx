@@ -75,27 +75,35 @@ async function fetchSleepPoints() {
     setLoading(false);
   }
 
-  function calculateStats(data: SleepData[]) {
-    if (data.length === 0) {
-      setAverageSleep(null);
-      setSuggestion('No data available for this week.');
-      return;
-    }
+function calculateStats(data: SleepData[]) {
+  const validData = data.filter(
+    (d) =>
+      d.duration_slept !== null &&
+      d.sleep_time !== null &&
+      d.wake_time !== null
+  );
 
-    const durations = data.map((d) => d.duration_slept);
-    const totalSleep = durations.reduce((sum, val) => sum + val, 0);
-    const average = totalSleep / data.length;
-    setAverageSleep(average);
+  if (validData.length === 0) {
+    setAverageSleep(null);
+    setSuggestion('No valid sleep data recorded for this week.');
+    return;
+  }
 
-    const mean = average;
-    const variance =
-      durations.reduce((sum, val) => sum + (val - mean) ** 2, 0) / durations.length;
-    const stdDev = Math.sqrt(variance);
+  const durations = validData.map((d) => d.duration_slept);
+  const totalSleep = durations.reduce((sum, val) => sum + val, 0);
+  const average = totalSleep / validData.length;
+  setAverageSleep(average);
 
-    const lateNights = data.filter((d) => {
-      const hour = new Date(d.sleep_time).getHours();
-      return hour >= 1;
-    }).length;
+  const mean = average;
+  const variance =
+    durations.reduce((sum, val) => sum + (val - mean) ** 2, 0) / durations.length;
+  const stdDev = Math.sqrt(variance);
+
+  const lateNights = validData.filter((d) => {
+    const hour = new Date(d.sleep_time).getHours();
+    return hour >= 1;
+  }).length;
+
 
     const suggestions: string[] = [];
 
@@ -122,7 +130,6 @@ async function fetchSleepPoints() {
     }
 
     const punctuality = getPunctualityData(data);
-    console.log("Punctuality chart data:", punctuality);
 
     const lateSleeps = punctuality.filter(d => d && d.sleepDiff > 15).length;
     const earlyWakes = punctuality.filter(d => d && d.wakeDiff < -15).length;
@@ -148,8 +155,15 @@ async function fetchSleepPoints() {
 
   const latestEntry = sleepData[sleepData.length - 1];
 
+  function copyTimeToDate(targetTime: Date, baseDate: Date) {
+  const newDate = new Date(baseDate);
+  newDate.setHours(targetTime.getHours(), targetTime.getMinutes(), 0, 0);
+  return newDate;
+}
 
 function getPunctualityData(data: SleepData[]) {
+
+
   return data
     .filter(d =>
       d.sleep_time &&
@@ -172,10 +186,13 @@ function getPunctualityData(data: SleepData[]) {
         return null;
       }
 
-      const sleepDiff = Math.round((actualSleep.getTime() - targetSleep.getTime()) / 60000); 
-      const wakeDiff = Math.round((actualWake.getTime() - targetWake.getTime()) / 60000); 
+      const alignedTargetSleep = copyTimeToDate(targetSleep, actualSleep);
+      const alignedTargetWake = copyTimeToDate(targetWake, actualWake);
 
-      const label = new Date(d.sleep_date).toLocaleDateString('en-US', { weekday: 'short' }); 
+      const sleepDiff = Math.round((actualSleep.getTime() - alignedTargetSleep.getTime()) / 60000);
+      const wakeDiff = Math.round((actualWake.getTime() - alignedTargetWake.getTime()) / 60000);
+
+      const label = new Date(d.sleep_date).toLocaleDateString('en-US', { weekday: 'short' });
 
       return {
         date: label,
