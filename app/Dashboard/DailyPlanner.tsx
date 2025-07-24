@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { SetStateAction, useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
@@ -373,7 +373,7 @@ export default function PlannerScreen() {
           isVisible={chooseTime}
           mode="time"
           date={selectedTime || new Date()}
-          onConfirm={(date: SetStateAction<Date | null>) => {
+          onConfirm={(date: Date) => {
             setSelectedTime(applyTimeToToday(date));
             setChooseTime(false);
           }}

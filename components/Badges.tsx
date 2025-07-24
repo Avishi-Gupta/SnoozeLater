@@ -10,9 +10,9 @@ const BADGE_DEFINITIONS: Record<
   string,
   { icon: JSX.Element; label: string }
 > = {
-  earlyBird: {
+  wellRested: {
     icon: <Ionicons name="sunny" size={20} color="#FFD700" />,
-    label: 'Early Bird',
+    label: 'Well Rested',
   },
   studious: {
     icon: <MaterialCommunityIcons
@@ -54,7 +54,19 @@ const BADGE_DEFINITIONS: Record<
     icon: <Ionicons name="alarm" size={20} color="#9c27b0" />,
     label: 'Early Riser',
   },
-  // Add more badges here as needed
+  sleepMaster: {
+  icon: <Ionicons name="bed" size={20} color="#00bcd4" />,
+  label: 'Sleep Master',
+},
+taskChampion: {
+  icon: <MaterialCommunityIcons name="trophy" size={20} color="#ff5722" />,
+  label: 'Task Champion',
+},
+allRounder: {
+  icon: <Ionicons name="star" size={20} color="#9e9e9e" />,
+  label: 'All-Rounder',
+},
+
 };
 
 export default function Badges({ badgeKeys }: BadgeProps) {
@@ -82,7 +94,7 @@ const styles = StyleSheet.create({
   badgesContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8, // For React Native >= 0.71
+    gap: 8, 
   },
   badge: {
     flexDirection: 'row',

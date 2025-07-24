@@ -28,7 +28,7 @@ type User = {
   username: string;
   email: string;
   avatar_url?: string | null;
-  badges?: Badge[] | null;
+  badges?: string[] | null;
 };
 
 export default function Profile() {
@@ -38,7 +38,8 @@ export default function Profile() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [avgSleep, setAvgSleep] = useState<number | null>(null);
   const [totalPoints, setTotalPoints] = useState<number | null>(null);
-  const [badges, setBadges] = useState<Badge[]>([]);
+  //const [badges, setBadges] = useState<Badge[]>([]);
+  const [badges, setBadges] = useState<string[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -59,6 +60,7 @@ export default function Profile() {
           console.error('Error fetching profile:', error.message);
           return;
         }
+
 
         const refreshedProfile: User = {
           ...profile,
@@ -245,9 +247,10 @@ const fetchAverageSleep = async (userId: string) => {
 
           <View style={styles.badgesContainer}>
             <Text style={styles.sectionTitle}>Badges Earned</Text>
-            <Badges badgeKeys={(user.badges || []).map(badge => badge.badge_type)} /> 
+            <Badges badgeKeys={(user.badges || [])} /> 
           </View>
 
+          
           <TouchableOpacity
             style={[styles.button, { marginBottom: 15 }]}
             onPress={() => router.push('/settings')}

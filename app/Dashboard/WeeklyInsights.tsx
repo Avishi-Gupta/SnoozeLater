@@ -58,9 +58,18 @@ async function fetchSleepPoints() {
     const start = startOfWeek(today, { weekStartsOn: 1 });
     const end = endOfWeek(today, { weekStartsOn: 1 });
 
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+
+  if (userError || !userData?.user) {
+    console.error('Error fetching user:', userError?.message);
+    return;
+  }
+
+  const userId = userData.user.id;
     const { data, error } = await supabase
       .from('sleep_data')
       .select('sleep_time, wake_time, duration_slept, sleep_date, target_sleep_time, target_wake_time')
+      .eq('user_id', userId)
       .gte('sleep_date', start.toISOString().split('T')[0])
       .lte('sleep_date', end.toISOString().split('T')[0])
       .order('sleep_date', { ascending: true });
@@ -245,10 +254,6 @@ function getPunctualityData(data: SleepData[]) {
 
       <Text style={styles.chartTitle}>Sleep Duration Over the Week</Text>
       <SleepBarChart data={sleepData} />
-{/* 
-      <Text style={styles.chartTitle}>
-        Sleep vs Target (mins)
-      </Text> */}
         
       <SleepPunctualityChart data={getPunctualityData(sleepData).filter((d): d is { date: string; sleepDiff: number; wakeDiff: number } => d !== null)} />
 
