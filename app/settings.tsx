@@ -70,6 +70,7 @@ export default function Settings() {
       await AsyncStorage.setItem('userInfo', JSON.stringify(updatedUser));
       setMessage('✅ Username updated successfully!');
       setNewUsername('');
+      setTimeout(() => router.replace('/login'), 1000); 
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'An unexpected error occurred.');
     }
@@ -87,6 +88,7 @@ export default function Settings() {
 
       setMessage('✅ Password updated successfully!');
       setNewPassword('');
+       setTimeout(() => router.replace('/login'), 1000);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unexpected error updating password.');
     }

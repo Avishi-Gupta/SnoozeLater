@@ -530,7 +530,7 @@ const totalFocusTime = (taskRow?.current_focus_secs || 0) + focusSoFar;
       });
       const data = await res.json();
       if (!res.ok) {
-        console.error('Badge assignment error:', data.error);
+       console.error('Badge assignment error:', data.error);
         return [];
       } else {
         console.log('Badges updated:', data.badges);

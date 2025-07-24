@@ -44,9 +44,8 @@ serve(async (req: any) => {
         }
       }
 
-
       let avgStudyHours = null;
-      if (studyData && studyData.length > 4) {
+      if (studyData && studyData.length > 0) {
         const totalPoints = studyData.reduce((sum: any, d: { points_earned: any; }) => sum + (d.points_earned ?? 0), 0);
         avgStudyHours = totalPoints / 10 / studyData.length;
       }
@@ -63,7 +62,7 @@ serve(async (req: any) => {
       if (pointsSummary?.task_points && pointsSummary.task_points >= 2000) {
         badgesToAssign.add('taskChampion');
       }
-      if (pointsSummary?.total_points && pointsSummary.total_points >= 6000) {
+      if (pointsSummary?.total_points && pointsSummary.total_points >= 5000) {
         badgesToAssign.add('allRounder');
       }
 
