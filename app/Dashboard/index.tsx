@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Image,
@@ -39,7 +40,8 @@ export default function Profile() {
   const [totalPoints, setTotalPoints] = useState<number | null>(null);
   const [badges, setBadges] = useState<Badge[]>([]);
 
-  useEffect(() => {
+  useFocusEffect(
+    useCallback(() => {
     const loadUserInfo = async () => {
       try {
         const {
@@ -77,29 +79,38 @@ export default function Profile() {
       }
     };
 
-    const fetchAverageSleep = async (userId: string) => {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(endDate.getDate() - 6);
+const fetchAverageSleep = async (userId: string) => {
+  const endDate = new Date();
+  const startDate = new Date();
+  startDate.setDate(endDate.getDate() - 6); 
 
-      const { data, error } = await supabase
-        .from('sleep_data')
-        .select('duration_slept')
-        .eq('user_id', userId)
-        .gte('inserted_at', startDate.toISOString());
+  const { data, error } = await supabase
+    .from('sleep_data')
+    .select('duration_slept')
+    .eq('user_id', userId)
+    .gte('sleep_date', startDate.toISOString());
 
-      if (error) {
-        console.error('Error fetching sleep data:', error.message);
-        return;
-      }
+  if (error) {
+    console.error('Error fetching sleep data:', error.message);
+    return;
+  }
 
-      if (data && data.length > 0) {
-        const total = data.reduce((sum, row) => sum + (row.duration_slept || 0), 0);
-        setAvgSleep(total / data.length);
-      } else {
-        setAvgSleep(null);
-      }
-    };
+  if (!data || data.length === 0) {
+    setAvgSleep(null);
+    return;
+  }
+  const validDurations = data
+    .map((row) => Number(row.duration_slept))
+    .filter((val) => !isNaN(val) && val > 0);
+
+  if (validDurations.length === 0) {
+    setAvgSleep(null);
+    return;
+  }
+
+  const total = validDurations.reduce((sum, val) => sum + val, 0);
+  setAvgSleep(total / validDurations.length);
+};
 
     const fetchTotalPoints = async (userId: string) => {
       const { data, error } = await supabase
@@ -119,9 +130,9 @@ export default function Profile() {
         setTotalPoints(null);
       }
     };
-
-    loadUserInfo();
-  }, []);
+      loadUserInfo();
+    }, [])
+  );
 
   const handlePickAndUploadImage = async () => {
     try {

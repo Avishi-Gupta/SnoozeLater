@@ -22,9 +22,9 @@ const chartConfig = {
 const screenWidth = Dimensions.get('window').width;
 
 export default function PunctualityBarCharts({ data }: { data: PunctualityData[] }) {
-  const labels = data.map((d) =>
-  new Date(d.date).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' })
-);
+    
+const labels = data.map((d) => d.date);
+
   const sleepData = data.map((d) => d.sleepDiff);
   const wakeData = data.map((d) => d.wakeDiff);
 
@@ -33,6 +33,7 @@ export default function PunctualityBarCharts({ data }: { data: PunctualityData[]
       <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, color: 'white' }}>
         Sleep Time Punctuality (in minutes)
       </Text>
+      <View>
       <BarChart
               data={{
                   labels,
@@ -47,10 +48,12 @@ export default function PunctualityBarCharts({ data }: { data: PunctualityData[]
                   color: (opacity = 1) => `rgba(0, 122, 255, ${opacity})`, 
               }}
               style={{ borderRadius: 8 }} yAxisLabel={''}      />
+</View>
 
       <Text style={{ fontSize: 16, fontWeight: 'bold', marginTop: 24, marginBottom: 8, color: 'white' }}>
         Wake Time Punctuality (in minutes)
       </Text>
+      <View>
       <BarChart
               data={{
                   labels,
@@ -65,6 +68,7 @@ export default function PunctualityBarCharts({ data }: { data: PunctualityData[]
                   color: (opacity = 1) => `rgba(255, 99, 132, ${opacity})`, 
               }}
               style={{ borderRadius: 8 }} yAxisLabel={''}      />
+      </View>
     </View>
   );
 }
