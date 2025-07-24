@@ -5,7 +5,7 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-serve(async (req) => {
+serve(async (req: any) => {
   try {
     const { data: users, error: userError } = await supabase.from('profiles').select('id, badges');
     if (userError || !users) {
@@ -31,15 +31,23 @@ serve(async (req) => {
         .eq('user_id', userId)
         .single();
 
-      let avgSleep = null;
-      if (sleepData && sleepData.length > 0) {
-        const totalSleep = sleepData.reduce((sum, d) => sum + (d.duration_slept ?? 0), 0);
-        avgSleep = totalSleep / sleepData.length;
+    let avgSleep = null;
+
+    if (sleepData && sleepData.length > 1) {
+      const validSleepDurations = sleepData
+          .map((d: { duration_slept: any; }) => d.duration_slept)
+          .filter((d: number) => typeof d === 'number' && !isNaN(d));
+
+        if (validSleepDurations.length > 1) {
+          const totalSleep = validSleepDurations.reduce((sum: any, d: any) => sum + d, 0);
+          avgSleep = totalSleep / validSleepDurations.length;
+        }
       }
 
+
       let avgStudyHours = null;
-      if (studyData && studyData.length > 0) {
-        const totalPoints = studyData.reduce((sum, d) => sum + (d.points_earned ?? 0), 0);
+      if (studyData && studyData.length > 4) {
+        const totalPoints = studyData.reduce((sum: any, d: { points_earned: any; }) => sum + (d.points_earned ?? 0), 0);
         avgStudyHours = totalPoints / 10 / studyData.length;
       }
 
@@ -49,13 +57,13 @@ serve(async (req) => {
       if (avgSleep !== null && avgSleep >= 7) badgesToAssign.add('wellRested');
       if (avgStudyHours !== null && avgStudyHours >= 4) badgesToAssign.add('studious');
 
-      if (pointsSummary?.sleep_points && pointsSummary.sleep_points >= 1000) {
+      if (pointsSummary?.sleep_points && pointsSummary.sleep_points >= 2000) {
         badgesToAssign.add('sleepMaster');
       }
       if (pointsSummary?.task_points && pointsSummary.task_points >= 2000) {
         badgesToAssign.add('taskChampion');
       }
-      if (pointsSummary?.total_points && pointsSummary.total_points >= 5000) {
+      if (pointsSummary?.total_points && pointsSummary.total_points >= 6000) {
         badgesToAssign.add('allRounder');
       }
 
