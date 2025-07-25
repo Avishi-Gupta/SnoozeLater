@@ -308,39 +308,39 @@ const handleSaveAndAwardPoints = async () => {
     return;
   }
 
-  const newBadges = await assignBadgesForUser(user.id);
-  if (newBadges && newBadges.length > 0) {
-    Alert.alert(
-      '🎉 New Badge Earned!',
-      newBadges.map((b: { name: any; description: any; }) => `🏅 ${b.name}: ${b.description}`).join('\n'),
-    );
-  }
-  resetTimer();   
-  
-  const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdmY25oanZtaXpjb3h4cmV5aWZlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0ODYyNjM4MiwiZXhwIjoyMDY0MjAyMzgyfQ.zE7SIRAvUth8eA9Nj2RLtzQTJynffB15e_Qmf0DqNc0'; 
-  async function assignBadgesForUser(userId: string) {
-    try {
-      const res = await fetch('https://gfcnhjvmizcoxxreyife.functions.supabase.co/singleAssignment', {
+async function assignBadgesForUser(userId: string): Promise<any[]> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch('https://gfcnhjvmizcoxxreyife.supabase.co/functions/v1/badgeAssignment2', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SERVICE_ROLE_KEY}`,
+        'Authorization': `Bearer ${session?.access_token}`,
       },
       body: JSON.stringify({ userId }),
     });
     const data = await res.json();
+
     if (!res.ok) {
-      // console.error('Badge assignment error:', data.error);
-      return [];
-    } else {
-      console.log('Badges updated:', data.badges);
-      return data.badges || [];
-    }
-    } catch (error) {
-      console.error('Error calling badge assignment:', error);
+      console.error('Badge assignment error:', data.error);
       return [];
     }
+
+    return data.badges || [];
+  } catch (error) {
+    console.error('Error calling badge assignment:', error);
+    return [];
   }
+}
+
+const newBadges = await assignBadgesForUser(user.id);
+if (newBadges.length > 0) {
+  Alert.alert(
+    '🎉 New Badge Earned!',
+    newBadges.map(b => `🏅 ${b.name}: ${b.description}`).join('\n'),
+  );
+}
+
 };
 
   return (
