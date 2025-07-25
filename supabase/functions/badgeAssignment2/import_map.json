@@ -1,0 +1,5 @@
+{
+  "imports": {
+    "supabase-functions": "https://esm.sh/v135/@supabase/functions@2.4.0"
+  }
+}
