@@ -224,19 +224,38 @@ const awardSleepPoints = async () => {
     return alert('No sleep data found');
   }
 
-function copyTimeToDate(targetTime: Date, baseDate: Date) {
-  const newDate = new Date(baseDate);
-  newDate.setHours(targetTime.getHours(), targetTime.getMinutes(), 0, 0);
-  return newDate;
-}
+// function copyTimeToDate(targetTime: Date, baseDate: Date) {
+//   const newDate = new Date(baseDate);
+//   newDate.setHours(targetTime.getHours(), targetTime.getMinutes(), 0, 0);
+//   return newDate;
+// }
 
 const targetSleep = new Date(data.target_sleep_time);
 const targetWake = new Date(data.target_wake_time);
 const actualSleep = new Date(data.sleep_time);
 const actualWake = new Date(data.wake_time);
 
-const alignedTargetSleep = copyTimeToDate(targetSleep, actualSleep);
-const alignedTargetWake = copyTimeToDate(targetWake, actualWake);
+function alignTargetTime(target: Date, actual: Date): Date {
+  const adjusted = new Date(actual);
+  adjusted.setHours(target.getHours(), target.getMinutes(), 0, 0);
+
+  if (actual.getHours() < 3 && target.getHours() > 20) {
+    adjusted.setDate(adjusted.getDate() - 1);
+  }
+
+  if (actual.getHours() > 20 && target.getHours() < 3) {
+    adjusted.setDate(adjusted.getDate() + 1);
+  }
+
+  return adjusted;
+}
+
+const alignedTargetSleep = alignTargetTime(targetSleep, actualSleep);
+const alignedTargetWake = alignTargetTime(targetWake, actualWake);
+
+
+// const alignedTargetSleep = copyTimeToDate(targetSleep, actualSleep);
+// const alignedTargetWake = copyTimeToDate(targetWake, actualWake);
 
 const sleepDiffMins = Math.abs(Math.floor((actualSleep.getTime() - alignedTargetSleep.getTime()) / 60000));
 const wakeDiffMins = Math.abs(Math.floor((actualWake.getTime() - alignedTargetWake.getTime()) / 60000));
