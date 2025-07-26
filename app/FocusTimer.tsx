@@ -232,6 +232,8 @@ const handleStart = async () => {
         seconds: totalSeconds,
         repeats: false,
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+
+        channelId: 'default',
       },
     });
   }
@@ -284,6 +286,8 @@ const handlePauseResume = async () => {
         seconds: secondsLeft,
         repeats: false,
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+
+        channelId: 'default',
       },
     });
   }
@@ -328,6 +332,8 @@ const handleNeedMoreTime = () => {
                 seconds: newSecondsLeft,
                 repeats: false,
                 type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+
+                channelId: 'default',
               },
             });
           }

@@ -174,7 +174,9 @@ export default function PlannerScreen() {
         hour: date.getHours(),
         minute: date.getMinutes(),
         repeats: repeat,
-      },
+        
+        channelId: 'default',
+        },
     });
     return id;
   }
@@ -207,7 +209,9 @@ export default function PlannerScreen() {
         hour: date.getHours(),
         minute: date.getMinutes(),
         repeats: repeat,
-      },
+
+        channelId: 'default',
+      }
     });
 
     await AsyncStorage.setItem(key, JSON.stringify([id]));
