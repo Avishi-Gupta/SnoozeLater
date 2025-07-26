@@ -337,6 +337,7 @@ const chartConfig = {
             <Text style={styles.title}>{s.category}</Text>
             <Text style={styles.text}>Tasks Completed: {s.count}</Text>
             <Text style={styles.text}>Time Spent: {s.totalTimeHrs} hr(s)</Text>
+            <Text style={styles.text}>Points: {s.totalPoints}</Text>
           </View>
         ))
       )}

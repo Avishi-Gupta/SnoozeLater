@@ -166,6 +166,8 @@ export default function PlannerScreen() {
       content: {
         title: 'Routine Reminder',
         body: `Time for: ${title}`,
+        vibrate: [500, 500, 500],
+        priority: Notifications.AndroidNotificationPriority.HIGH,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
@@ -211,7 +213,6 @@ export default function PlannerScreen() {
     await AsyncStorage.setItem(key, JSON.stringify([id]));
     return id;
   }
-
 
   async function handleAddOrUpdateTask() {
   const taskTitle = selectedCategory === 'Others' ? customTask.trim() : selectedCategory;
