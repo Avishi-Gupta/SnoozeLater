@@ -6,6 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Keyboard,
   StyleSheet,
@@ -25,6 +26,8 @@ export default function FocusTimer() {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [endOptions, setEndOptions] = useState(false); 
+  const [isBadgeLoading, setIsBadgeLoading] = useState(false);
+
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -540,8 +543,10 @@ async function assignBadgesForUser(userId: string): Promise<any[]> {
     return [];
   }
 }
-
+setIsBadgeLoading(true); 
 const newBadges = await assignBadgesForUser(user.id);
+setIsBadgeLoading(false); 
+
 if (newBadges.length > 0) {
   Alert.alert(
     '🎉 New Badge Earned!',
@@ -660,6 +665,12 @@ if (newBadges.length > 0) {
       </TouchableOpacity>
       )}
 
+{isBadgeLoading && (
+<View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center', paddingBottom: 40 }}>
+  <ActivityIndicator size="large" color="#FF6B6B" />
+  <Text style={{ color: '#FFF', marginTop: 8 }}>Loading...</Text>
+</View>
+)}
       {showBreakModal && (
         <View style={styles.popupOverlay}>
           <View style={styles.popupContainer}>
