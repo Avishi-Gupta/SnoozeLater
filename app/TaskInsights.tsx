@@ -193,19 +193,16 @@ function generateSuggestions(data: TaskCompleted[]) {
 
   const suggestionsList: string[] = [];
 
-  // 1. Category Balance
   const assignment = categoryCount['Assignment'] || 0;
   const selfStudy = categoryCount['Self-Study'] || 0;
   if (assignment > selfStudy + 5) {
     suggestionsList.push("You're focusing more on Assignments. Try to balance with some Self-Study.");
   }
 
-  // 2. Evening Focus Pattern
   if (eveningCount / totalTasks > 0.6) {
     suggestionsList.push("You complete most tasks in the evening. Consider doing tougher tasks earlier.");
   }
 
-  // 3. Punctuality
   if (lateTasks / totalTasks > 0.5) {
     suggestionsList.push("You often start tasks late. Try to begin within 5 minutes of the reminder.");
   }
